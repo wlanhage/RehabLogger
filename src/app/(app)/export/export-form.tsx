@@ -13,7 +13,7 @@ import {
 import { fetchExportRows, type ExportRange, type ExportRow } from "./actions";
 
 const COLUMNS: (keyof ExportRow)[] = [
-  "date","training_type","exercise","sets","reps","weight","duration","pain_score","pain_location","reaction","rpe","notes",
+  "date","training_type","exercise","sets","reps","weight","duration","pain_score","pain_location","rpe","daily_soreness","daily_location","notes",
 ];
 
 function toCSV(rows: ExportRow[]) {

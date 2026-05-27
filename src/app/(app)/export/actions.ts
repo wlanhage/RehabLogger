@@ -4,6 +4,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-f
 
 export type ExportRow = {
   date: string;
+  /** "gym" | "cycling" | "walking" | "football" | "checkin" */
   training_type: string;
   exercise: string;
   sets: number | string;
@@ -12,8 +13,9 @@ export type ExportRow = {
   duration: number | string;
   pain_score: number | string;
   pain_location: string;
-  reaction: string;
   rpe: number | string;
+  daily_soreness: number | string;
+  daily_location: string;
   notes: string;
 };
 
@@ -32,12 +34,17 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
   const anchor = new Date(anchorISO);
   const bounds = rangeBounds(range, anchor);
 
-  let q = supabase.from("sessions").select("*").order("date", { ascending: true });
+  let sessionsQ = supabase.from("sessions").select("*").order("date", { ascending: true });
+  let checkinsQ = supabase.from("daily_checkins").select("*").order("date", { ascending: true });
   if (bounds) {
-    q = q.gte("date", format(bounds.from, "yyyy-MM-dd")).lte("date", format(bounds.to, "yyyy-MM-dd"));
+    const from = format(bounds.from, "yyyy-MM-dd");
+    const to = format(bounds.to, "yyyy-MM-dd");
+    sessionsQ = sessionsQ.gte("date", from).lte("date", to);
+    checkinsQ = checkinsQ.gte("date", from).lte("date", to);
   }
-  const { data: sessions, error } = await q;
+  const [{ data: sessions, error }, { data: checkins, error: cErr }] = await Promise.all([sessionsQ, checkinsQ]);
   if (error) throw error;
+  if (cErr) throw cErr;
 
   const ids = (sessions ?? []).map((s) => s.id);
   const [{ data: sets }, { data: followups }] = await Promise.all([
@@ -50,8 +57,9 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
   ]);
 
   type GS = { session_id: string; exercise: string; sets: number | null; reps: number | null; weight: number | null; notes: string | null };
-  type FU = { session_id: string; pain_score: number | null; pain_location: string | null; reaction: string | null; rpe: number | null };
+  type FU = { session_id: string; pain_score: number | null; pain_location: string | null; rpe: number | null };
   type S = { id: string; date: string; type: string; duration_minutes: number | null; notes: string | null };
+  type CK = { date: string; soreness: number | null; location: string | null; notes: string | null };
 
   const setsBySession = new Map<string, GS[]>();
   ((sets ?? []) as GS[]).forEach((s) => {
@@ -63,12 +71,24 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
   ((followups ?? []) as FU[]).forEach((f) => fuBySession.set(f.session_id, f));
 
   const rows: ExportRow[] = [];
+  const blank = {
+    exercise: "",
+    sets: "",
+    reps: "",
+    weight: "",
+    duration: "",
+    pain_score: "",
+    pain_location: "",
+    rpe: "",
+    daily_soreness: "",
+    daily_location: "",
+  } as const;
+
   for (const s of (sessions ?? []) as S[]) {
     const f = fuBySession.get(s.id);
     const fuFields = {
       pain_score: f?.pain_score ?? "",
       pain_location: f?.pain_location ?? "",
-      reaction: f?.reaction ?? "",
       rpe: f?.rpe ?? "",
     };
     if (s.type === "gym") {
@@ -76,26 +96,22 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
       const used = gs.filter((g) => g.weight || g.sets || g.reps || g.notes);
       if (used.length === 0) {
         rows.push({
+          ...blank,
           date: s.date,
           training_type: s.type,
-          exercise: "",
-          sets: "",
-          reps: "",
-          weight: "",
-          duration: "",
           ...fuFields,
           notes: s.notes ?? "",
         });
       } else {
         for (const g of used) {
           rows.push({
+            ...blank,
             date: s.date,
             training_type: s.type,
             exercise: g.exercise,
             sets: g.sets ?? "",
             reps: g.reps ?? "",
             weight: g.weight ?? "",
-            duration: "",
             ...fuFields,
             notes: g.notes ?? s.notes ?? "",
           });
@@ -103,17 +119,27 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
       }
     } else {
       rows.push({
+        ...blank,
         date: s.date,
         training_type: s.type,
-        exercise: "",
-        sets: "",
-        reps: "",
-        weight: "",
         duration: s.duration_minutes ?? "",
         ...fuFields,
         notes: s.notes ?? "",
       });
     }
   }
+
+  for (const c of (checkins ?? []) as CK[]) {
+    rows.push({
+      ...blank,
+      date: c.date,
+      training_type: "checkin",
+      daily_soreness: c.soreness ?? "",
+      daily_location: c.location ?? "",
+      notes: c.notes ?? "",
+    });
+  }
+
+  rows.sort((a, b) => a.date.localeCompare(b.date));
   return rows;
 }

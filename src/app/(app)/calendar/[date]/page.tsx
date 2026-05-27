@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isToday, isFuture } from "date-fns";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
-import type { Session, GymSet, RehabFollowup } from "@/types/db";
+import { ChevronLeft, Plus, HeartPulse } from "lucide-react";
+import type { Session, GymSet, RehabFollowup, DailyCheckin } from "@/types/db";
 import type { TrainingType } from "@/lib/constants";
+import { DeleteSessionButton } from "./session-actions";
+import { sorenessTone } from "@/lib/checkin-ui";
+import { cn } from "@/lib/utils";
 
 const typeLabel: Record<TrainingType, string> = {
   gym: "Gym",
@@ -19,13 +22,17 @@ export default async function DayPage({
   params: Promise<{ date: string }>;
 }) {
   const { date } = await params;
+  const dateObj = parseISO(date);
   const supabase = await createClient();
 
-  const { data: sessions } = await supabase
-    .from("sessions")
-    .select("*")
-    .eq("date", date)
-    .order("created_at", { ascending: true });
+  const [{ data: sessions }, { data: checkin }] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("*")
+      .eq("date", date)
+      .order("created_at", { ascending: true }),
+    supabase.from("daily_checkins").select("*").eq("date", date).maybeSingle(),
+  ]);
 
   const ids = (sessions ?? []).map((s: Session) => s.id);
   const [{ data: sets }, { data: followups }] = await Promise.all([
@@ -46,12 +53,66 @@ export default async function DayPage({
   const followupBySession = new Map<string, RehabFollowup>();
   ((followups ?? []) as RehabFollowup[]).forEach((f) => followupBySession.set(f.session_id, f));
 
+  const canAdd = !isFuture(dateObj);
+
   return (
     <div className="space-y-5">
       <Link href="/calendar" className="inline-flex items-center text-sm text-muted-foreground">
         <ChevronLeft className="h-4 w-4" /> Calendar
       </Link>
-      <h1 className="text-2xl font-semibold">{format(parseISO(date), "EEEE, MMM d")}</h1>
+      <div className="flex items-baseline justify-between gap-3">
+        <h1 className="text-2xl font-semibold">
+          {format(dateObj, "EEEE, MMM d")}
+          {isToday(dateObj) && <span className="text-sm font-normal text-muted-foreground"> · today</span>}
+        </h1>
+      </div>
+
+      {canAdd && (
+        <>
+          {(() => {
+            const c = (checkin as DailyCheckin | null) ?? null;
+            return (
+              <Link href={`/checkin?date=${date}`}>
+                <Card className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      "h-9 w-9 rounded-full flex items-center justify-center",
+                      c ? sorenessTone(c.soreness ?? 0).bg : "bg-muted",
+                    )}
+                  >
+                    <HeartPulse className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 text-sm">
+                    {c ? (
+                      <>
+                        <p className="font-medium">Daily check-in</p>
+                        <p className="text-muted-foreground">
+                          Soreness {c.soreness}/10
+                          {c.location ? ` · ${c.location}` : ""}
+                          <span className="ml-1 underline">edit</span>
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-medium">No check-in for this day</p>
+                        <p className="text-muted-foreground">Add one</p>
+                      </>
+                    )}
+                  </div>
+                </Card>
+              </Link>
+            );
+          })()}
+
+          <Link
+            href={`/add?date=${date}`}
+            className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card py-3 text-sm font-medium hover:bg-muted"
+          >
+            <Plus className="h-4 w-4" />
+            Log training for this day
+          </Link>
+        </>
+      )}
 
       {(!sessions || sessions.length === 0) && (
         <p className="text-sm text-muted-foreground">No training that day.</p>
@@ -60,6 +121,7 @@ export default async function DayPage({
       {(sessions ?? []).map((s: Session) => {
         const f = followupBySession.get(s.id);
         const gs = setsBySession.get(s.id) ?? [];
+        const isGymOpen = s.type === "gym" && !f;
         return (
           <Card key={s.id} className="space-y-3">
             <div className="flex items-baseline justify-between">
@@ -93,12 +155,31 @@ export default async function DayPage({
               <div className="border-t border-border pt-3 text-sm grid grid-cols-2 gap-y-1">
                 <span className="text-muted-foreground">Pain</span>
                 <span>{f.pain_score}/10 {f.pain_location ? `· ${f.pain_location}` : ""}</span>
-                <span className="text-muted-foreground">Reaction</span>
-                <span>{f.reaction}</span>
                 <span className="text-muted-foreground">RPE</span>
                 <span>{f.rpe}/10</span>
               </div>
             )}
+
+            <div className="flex items-center justify-between border-t border-border pt-3 -mb-1">
+              {isGymOpen ? (
+                <Link
+                  href={`/add/gym?s=${s.id}`}
+                  className="text-xs text-foreground underline"
+                >
+                  Continue gym session
+                </Link>
+              ) : !f ? (
+                <Link
+                  href={`/follow-up/${s.id}`}
+                  className="text-xs text-foreground underline"
+                >
+                  Add follow-up
+                </Link>
+              ) : (
+                <span />
+              )}
+              <DeleteSessionButton sessionId={s.id} date={date} />
+            </div>
           </Card>
         );
       })}

@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { generateWeeklyPlan } from "./actions";
+import { WeeklyPlanView } from "./weekly-plan-view";
 
 export function PlanGenerator({ initialContent }: { initialContent: string | null }) {
   const [content, setContent] = useState<string | null>(initialContent);
@@ -23,15 +24,15 @@ export function PlanGenerator({ initialContent }: { initialContent: string | nul
   return (
     <div className="space-y-3">
       {content ? (
-        <pre className="whitespace-pre-wrap text-sm font-sans">{content}</pre>
+        <WeeklyPlanView content={content} />
       ) : (
         <p className="text-sm text-muted-foreground">
-          No plan yet for this week. Generate one from your recent training and rehab data.
+          Ingen plan för denna vecka än. Generera en baserat på senaste träningen och rehab-datan.
         </p>
       )}
       {error && <p className="text-sm text-red-500">{error}</p>}
       <Button onClick={run} disabled={pending} className="w-full" size="lg">
-        {pending ? "Generating…" : content ? "Regenerate plan" : "Generate weekly plan"}
+        {pending ? "Genererar…" : content ? "Generera om" : "Generera veckoplan"}
       </Button>
     </div>
   );

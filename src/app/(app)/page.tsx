@@ -2,10 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import Link from "next/link";
-import { Dumbbell, Bike, Footprints, Volleyball } from "lucide-react";
+import { Dumbbell, Bike, Footprints, Volleyball, HeartPulse, ChevronRight } from "lucide-react";
 import { signOut } from "@/app/login/actions";
-import type { Session } from "@/types/db";
+import type { Session, DailyCheckin } from "@/types/db";
 import type { TrainingType } from "@/lib/constants";
+import { sorenessTone } from "@/lib/checkin-ui";
 
 const typeMeta: Record<TrainingType, { label: string; Icon: typeof Dumbbell }> = {
   gym: { label: "Gym", Icon: Dumbbell },
@@ -17,23 +18,26 @@ const typeMeta: Record<TrainingType, { label: string; Icon: typeof Dumbbell }> =
 export default async function HomePage() {
   const supabase = await createClient();
   const today = new Date();
+  const todayISO = today.toISOString().slice(0, 10);
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
-  const { data: weekSessions } = await supabase
-    .from("sessions")
-    .select("*")
-    .gte("date", format(weekStart, "yyyy-MM-dd"))
-    .lte("date", format(weekEnd, "yyyy-MM-dd"))
-    .order("date", { ascending: false })
-    .order("created_at", { ascending: false });
-
-  const { data: recent } = await supabase
-    .from("sessions")
-    .select("*")
-    .order("date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const [{ data: weekSessions }, { data: recent }, { data: todayCheckin }] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("*")
+      .gte("date", format(weekStart, "yyyy-MM-dd"))
+      .lte("date", format(weekEnd, "yyyy-MM-dd"))
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("sessions")
+      .select("*")
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase.from("daily_checkins").select("*").eq("date", todayISO).maybeSingle(),
+  ]);
 
   const counts: Record<TrainingType, number> = { gym: 0, cycling: 0, walking: 0, football: 0 };
   (weekSessions ?? []).forEach((s: Session) => {
@@ -41,6 +45,7 @@ export default async function HomePage() {
   });
 
   const latest = recent?.[0];
+  const checkin = (todayCheckin as DailyCheckin | null) ?? null;
 
   return (
     <div className="space-y-6">
@@ -53,6 +58,31 @@ export default async function HomePage() {
           <button className="text-xs text-muted-foreground">Sign out</button>
         </form>
       </header>
+
+      <Link href="/checkin">
+        <Card className="flex items-center gap-3">
+          <div
+            className={`h-10 w-10 rounded-full flex items-center justify-center ${
+              checkin ? sorenessTone(checkin.soreness ?? 0).bg : "bg-muted"
+            }`}
+          >
+            <HeartPulse className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium">Today&apos;s check-in</p>
+            {checkin ? (
+              <p className="text-sm text-muted-foreground">
+                Soreness {checkin.soreness}/10
+                {checkin.location ? ` · ${checkin.location}` : ""}
+                <span className="ml-1 underline">edit</span>
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Log how your legs feel today</p>
+            )}
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Card>
+      </Link>
 
       <Card>
         <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Latest activity</p>

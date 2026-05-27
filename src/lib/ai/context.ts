@@ -1,37 +1,50 @@
 import { createClient } from "@/lib/supabase/server";
 import { format, subDays } from "date-fns";
-import type { Profile, Session, GymSet, RehabFollowup } from "@/types/db";
+import { GYM_EXERCISES } from "@/lib/constants";
+import type { Profile, Session, GymSet, RehabFollowup, DailyCheckin } from "@/types/db";
 
-export const COACH_SYSTEM_PROMPT = `You are the AI coach inside "Rehab Logger" — a long-term rehabilitation and training-progression platform for a single end user.
+export const COACH_SYSTEM_PROMPT = `Du är AI-coachen i appen "Rehab Logger" — en plattform för långsiktig rehabilitering och träningsprogression för en enskild användare.
 
-YOUR PURPOSE
-- Help the user safely rehabilitate their condition and progressively return to running and sport.
-- Optimise for the long horizon: load management, tissue capacity, gradual progression, and symptom-driven adjustment.
-- Take the user's PROFILE and recent TRAINING DATA into account in every recommendation. Reference specific sessions, pain scores, or trends when relevant — never give generic advice when concrete data is available.
+DITT SYFTE
+- Hjälpa användaren att rehabilitera säkert och stegvis komma tillbaka till löpning och idrott.
+- Optimera för det långa loppet: load management, vävnadskapacitet, gradvis progression, och symptom-driven justering.
+- Ta hänsyn till användarens PROFIL, senaste TRÄNINGSDATA och DAGLIGA CHECK-INS i varje rekommendation. Dagliga check-ins är träningsoberoende ömhets-/känslighetsdata — de är den primära återhämtningssignalen mellan pass och bästa proxy för "reaktion" på ett givet pass. Hänvisa till specifika pass, smärtvärden, ömhetstrender eller anteckningar när det är relevant. Ge aldrig generiska råd när konkret data finns.
 
-GROUND RULES
-- You are NOT a medical professional. For sharp/worsening pain, new symptoms, or red flags, tell the user to seek a physiotherapist or doctor.
-- Be concise and practical. Bullet points and short paragraphs over walls of text.
-- Prefer conservative progression. If pain trends up or reactions worsen, recommend backing off.
-- Use units the user is already using (kg, km, minutes). Never invent data that isn't in the context.
-- Stay on topic (rehab, training, recovery, sleep, nutrition basics as it relates to rehab). Politely redirect off-topic requests.
+GRUNDREGLER
+- Du är INTE en medicinsk professionell. Vid skarp/förvärrad smärta, nya symptom eller varningssignaler — säg till användaren att söka fysioterapeut eller läkare.
+- Var koncis och praktisk.
+- Föredra konservativ progression. Om smärta trendar upp eller reaktioner försämras → backa.
+- Använd användarens enheter (kg, km, minuter). Hitta aldrig på data som inte finns i kontexten.
+- Håll dig till ämnet (rehab, träning, återhämtning, sömn, grundläggande näring kopplat till rehab). Avled artigt off-topic-frågor.
 
-OUTPUT
-- Use plain text or simple Markdown. No tables unless asked.
-- When giving a weekly plan, structure it day-by-day (Mon–Sun) with intent, type, intensity guidance, and a brief "watch for" note tied to the user's symptoms.`;
+SPRÅK
+- Svara ALLTID på svenska, oavsett vilket språk användaren skriver på.
+- Använd "du" (inte "ni"), naturlig ton, undvik stelbenta direktöversättningar.`;
+
+export type GymHistoryEntry = {
+  date: string;
+  sets: number | null;
+  reps: number | null;
+  weight: number | null;
+};
 
 export type CoachContext = {
   profile: Profile | null;
   sessions: Session[];
   setsBySession: Map<string, GymSet[]>;
   followupBySession: Map<string, RehabFollowup>;
+  checkins: DailyCheckin[];
+  /** Per-exercise history for the longer window (default 60d), oldest → newest. */
+  gymHistory: Map<string, GymHistoryEntry[]>;
 };
 
 export async function loadCoachContext(days = 14): Promise<CoachContext> {
   const supabase = await createClient();
   const since = format(subDays(new Date(), days), "yyyy-MM-dd");
+  // Pull a longer window of gym work so we can show progression per exercise.
+  const sinceGymHistory = format(subDays(new Date(), 60), "yyyy-MM-dd");
 
-  const [{ data: profile }, { data: sessions }] = await Promise.all([
+  const [{ data: profile }, { data: sessions }, { data: checkins }] = await Promise.all([
     supabase.from("profiles").select("*").maybeSingle(),
     supabase
       .from("sessions")
@@ -39,7 +52,44 @@ export async function loadCoachContext(days = 14): Promise<CoachContext> {
       .gte("date", since)
       .order("date", { ascending: true })
       .order("created_at", { ascending: true }),
+    supabase
+      .from("daily_checkins")
+      .select("*")
+      .gte("date", since)
+      .order("date", { ascending: true }),
   ]);
+
+  // Fetch gym history separately (longer window, only sessions with logged work).
+  const { data: historySessions } = await supabase
+    .from("sessions")
+    .select("id,date")
+    .eq("type", "gym")
+    .gte("date", sinceGymHistory)
+    .order("date", { ascending: true });
+
+  const histIds = (historySessions ?? []).map((s: { id: string }) => s.id);
+  const { data: historySets } = histIds.length
+    ? await supabase
+        .from("gym_sets")
+        .select("session_id,exercise,sets,reps,weight")
+        .in("session_id", histIds)
+        .not("weight", "is", null)
+    : { data: [] as Array<{ session_id: string; exercise: string; sets: number | null; reps: number | null; weight: number | null }> };
+
+  const sessionDate = new Map<string, string>();
+  (historySessions ?? []).forEach((s: { id: string; date: string }) => sessionDate.set(s.id, s.date));
+
+  const gymHistory = new Map<string, GymHistoryEntry[]>();
+  ((historySets ?? []) as Array<{ session_id: string; exercise: string; sets: number | null; reps: number | null; weight: number | null }>).forEach((g) => {
+    const arr = gymHistory.get(g.exercise) ?? [];
+    arr.push({
+      date: sessionDate.get(g.session_id) ?? "",
+      sets: g.sets,
+      reps: g.reps,
+      weight: g.weight,
+    });
+    gymHistory.set(g.exercise, arr);
+  });
 
   const ids = (sessions ?? []).map((s: Session) => s.id);
   const [{ data: sets }, { data: followups }] = await Promise.all([
@@ -68,11 +118,13 @@ export async function loadCoachContext(days = 14): Promise<CoachContext> {
     sessions: (sessions ?? []) as Session[],
     setsBySession,
     followupBySession,
+    checkins: (checkins ?? []) as DailyCheckin[],
+    gymHistory,
   };
 }
 
 export function formatContextForPrompt(ctx: CoachContext): string {
-  const { profile, sessions, setsBySession, followupBySession } = ctx;
+  const { profile, sessions, setsBySession, followupBySession, checkins, gymHistory } = ctx;
 
   const profileLines: string[] = [];
   if (profile) {
@@ -127,13 +179,60 @@ export function formatContextForPrompt(ctx: CoachContext): string {
     .map(([k, v]) => `${k}: ${v}`)
     .join(", ") || "no sessions";
 
+  // Daily check-ins block — one line per logged day, oldest → newest.
+  const checkinLines = checkins.map((c) => {
+    const loc = c.location ? ` (${c.location})` : "";
+    const note = c.notes ? ` — ${c.notes}` : "";
+    return `- ${c.date} soreness ${c.soreness ?? "?"}/10${loc}${note}`;
+  });
+  const checkinBlock = checkinLines.length
+    ? checkinLines.join("\n")
+    : "(No daily check-ins logged in this window. Encourage the user to log them — they are the primary recovery signal between sessions.)";
+
+  // Per-exercise gym history (last 60 days) — last 5 entries per exercise,
+  // sorted oldest → newest so progression is obvious.
+  const historyLines: string[] = [];
+  for (const ex of GYM_EXERCISES) {
+    const entries = (gymHistory.get(ex) ?? []).slice(-5);
+    if (entries.length === 0) continue;
+    const summary = entries
+      .map((e) => {
+        const sr = e.sets && e.reps ? `${e.sets}×${e.reps}` : "";
+        const w = e.weight != null ? `@${e.weight}kg` : "";
+        return `${e.date} ${sr}${w ? ` ${w}` : ""}`.trim();
+      })
+      .join("  →  ");
+    historyLines.push(`- ${ex}: ${summary}`);
+  }
+  // Any custom exercises that aren't in the canonical list.
+  for (const [ex, entries] of gymHistory) {
+    if ((GYM_EXERCISES as readonly string[]).includes(ex)) continue;
+    const last = entries.slice(-5);
+    if (last.length === 0) continue;
+    const summary = last
+      .map((e) => `${e.date} ${e.sets ?? "?"}×${e.reps ?? "?"} @${e.weight ?? "?"}kg`)
+      .join("  →  ");
+    historyLines.push(`- ${ex} (custom): ${summary}`);
+  }
+  const historyBlock = historyLines.length
+    ? historyLines.join("\n")
+    : "(No logged gym work in the last 60 days.)";
+
   return [
     "USER PROFILE",
     profileBlock,
     "",
     `RECENT LOAD (last 14 days): ${totals}`,
     "",
+    "DAILY CHECK-INS (oldest → newest) — soreness/sensitivity, training-independent",
+    checkinBlock,
+    "",
     "RECENT SESSIONS (oldest → newest)",
     sessionBlock,
+    "",
+    "GYM PROGRESSION (last 60 days, last 5 entries per exercise, oldest → newest)",
+    historyBlock,
+    "",
+    `AVAILABLE GYM EXERCISES (the user can only log these — pick from this list when prescribing gym work): ${GYM_EXERCISES.join(", ")}.`,
   ].join("\n");
 }

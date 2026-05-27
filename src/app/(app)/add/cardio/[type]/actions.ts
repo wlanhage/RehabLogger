@@ -4,6 +4,12 @@ import { TRAINING_TYPES, type TrainingType } from "@/lib/constants";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+function safeDate(raw: string | null): string {
+  const today = new Date().toISOString().slice(0, 10);
+  if (!raw) return today;
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : today;
+}
+
 export async function createCardioSession(formData: FormData) {
   const type = String(formData.get("type") ?? "") as TrainingType;
   if (!TRAINING_TYPES.includes(type) || type === "gym") throw new Error("Invalid type");
@@ -11,6 +17,7 @@ export async function createCardioSession(formData: FormData) {
   const duration = formData.get("duration");
   const distance = formData.get("distance");
   const notes = formData.get("notes");
+  const date = safeDate(formData.get("date") ? String(formData.get("date")) : null);
 
   const supabase = await createClient();
   const {
@@ -18,13 +25,12 @@ export async function createCardioSession(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
 
-  const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from("sessions")
     .insert({
       user_id: user.id,
       type,
-      date: today,
+      date,
       duration_minutes: duration ? Number(duration) : null,
       distance_km: distance ? Number(distance) : null,
       notes: notes ? String(notes) : null,
@@ -35,5 +41,6 @@ export async function createCardioSession(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/calendar");
+  revalidatePath(`/calendar/${date}`);
   redirect(`/follow-up/${data.id}`);
 }

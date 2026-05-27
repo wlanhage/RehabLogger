@@ -52,7 +52,7 @@ The conversation that follows is the user's chat with you. Keep replies short an
     ...ordered.map((m) => ({ role: m.role, content: m.content }) satisfies ChatTurn),
   ];
 
-  const reply = await chatComplete(messages, { temperature: 0.5 });
+  const reply = await chatComplete(messages, { temperature: 0.5, maxTokens: 700 });
 
   const { error: aiErr } = await supabase
     .from("chat_messages")

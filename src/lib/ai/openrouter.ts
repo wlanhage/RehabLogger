@@ -6,11 +6,23 @@ export type ChatTurn = { role: ChatRole; content: string };
 
 const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
 
-export async function chatComplete(messages: ChatTurn[], opts?: { model?: string; temperature?: number }) {
+export async function chatComplete(
+  messages: ChatTurn[],
+  opts?: {
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    /** Force JSON output (OpenAI-compatible response_format). */
+    json?: boolean;
+  },
+) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY is not set");
 
   const model = opts?.model ?? process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
+  // Cap output so OpenRouter doesn't reserve the model's full context as
+  // worst-case cost (otherwise you'll hit 402 on free / low-balance accounts).
+  const max_tokens = opts?.maxTokens ?? 1024;
 
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -24,6 +36,8 @@ export async function chatComplete(messages: ChatTurn[], opts?: { model?: string
       model,
       messages,
       temperature: opts?.temperature ?? 0.4,
+      max_tokens,
+      ...(opts?.json ? { response_format: { type: "json_object" } } : {}),
     }),
   });
 

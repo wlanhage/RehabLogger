@@ -10,15 +10,6 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "Rehab Logger",
   description: "Personal rehab & training tracker",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Rehab Logger",
-  },
-  icons: {
-    apple: "/apple-touch-icon.png",
-  },
 };
 
 export const viewport: Viewport = {

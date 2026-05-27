@@ -56,6 +56,17 @@ export type WeeklyPlan = {
   created_at: string;
 };
 
+export type DailyCheckin = {
+  id: string;
+  user_id: string;
+  date: string;
+  soreness: number | null;
+  location: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ChatMessage = {
   id: string;
   user_id: string;

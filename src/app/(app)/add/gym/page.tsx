@@ -4,25 +4,30 @@ import { redirect } from "next/navigation";
 import { GymFlow } from "./gym-flow";
 import type { GymSet } from "@/types/db";
 
+function safeDate(raw?: string): string {
+  const today = new Date().toISOString().slice(0, 10);
+  if (!raw) return today;
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : today;
+}
+
 export default async function GymPage({
   searchParams,
 }: {
-  searchParams: Promise<{ s?: string }>;
+  searchParams: Promise<{ s?: string; date?: string }>;
 }) {
   const sp = await searchParams;
   let sessionId = sp.s;
+  const date = safeDate(sp.date);
 
   if (!sessionId) {
     const supabase = await createClient();
-    const today = new Date().toISOString().slice(0, 10);
 
-    // Re-use today's gym session if it exists and isn't yet "finished"
-    // (i.e. no rehab_followup row yet). RLS already scopes to the current user.
+    // Re-use an unfinished gym session for this date (no rehab_followup yet).
     const { data: candidates } = await supabase
       .from("sessions")
       .select("id, rehab_followups(session_id)")
       .eq("type", "gym")
-      .eq("date", today)
+      .eq("date", date)
       .order("created_at", { ascending: false })
       .limit(5);
 
@@ -35,7 +40,7 @@ export default async function GymPage({
       redirect(`/add/gym?s=${open.id}`);
     }
 
-    const res = await createGymSession();
+    const res = await createGymSession(date);
     redirect(`/add/gym?s=${res.sessionId}`);
   }
 

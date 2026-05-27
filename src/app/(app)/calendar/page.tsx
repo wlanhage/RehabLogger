@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Dumbbell, Bike, Footprints, Volleyball } from "lucide-react";
 import type { TrainingType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { sorenessTone } from "@/lib/checkin-ui";
 
 const icons: Record<TrainingType, typeof Dumbbell> = {
   gym: Dumbbell,
@@ -26,16 +27,27 @@ export default async function CalendarPage({
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
   const supabase = await createClient();
-  const { data: sessions } = await supabase
-    .from("sessions")
-    .select("date,type")
-    .gte("date", format(gridStart, "yyyy-MM-dd"))
-    .lte("date", format(gridEnd, "yyyy-MM-dd"));
+  const [{ data: sessions }, { data: checkins }] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("date,type")
+      .gte("date", format(gridStart, "yyyy-MM-dd"))
+      .lte("date", format(gridEnd, "yyyy-MM-dd")),
+    supabase
+      .from("daily_checkins")
+      .select("date,soreness")
+      .gte("date", format(gridStart, "yyyy-MM-dd"))
+      .lte("date", format(gridEnd, "yyyy-MM-dd")),
+  ]);
 
-  const map = new Map<string, Set<TrainingType>>();
+  const trainingMap = new Map<string, Set<TrainingType>>();
   (sessions ?? []).forEach((s: { date: string; type: TrainingType }) => {
-    if (!map.has(s.date)) map.set(s.date, new Set());
-    map.get(s.date)!.add(s.type);
+    if (!trainingMap.has(s.date)) trainingMap.set(s.date, new Set());
+    trainingMap.get(s.date)!.add(s.type);
+  });
+  const checkinMap = new Map<string, number>();
+  (checkins ?? []).forEach((c: { date: string; soreness: number | null }) => {
+    if (c.soreness != null) checkinMap.set(c.date, c.soreness);
   });
 
   const prevMonth = format(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1), "yyyy-MM");
@@ -56,19 +68,28 @@ export default async function CalendarPage({
       <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const key = format(day, "yyyy-MM-dd");
-          const types = map.get(key);
+          const types = trainingMap.get(key);
+          const soreness = checkinMap.get(key);
           const inMonth = isSameMonth(day, cursor);
           return (
             <Link
               key={key}
               href={`/calendar/${key}`}
               className={cn(
-                "aspect-square rounded-lg border border-border p-1 flex flex-col text-xs",
+                "aspect-square rounded-lg border border-border p-1 flex flex-col text-xs relative",
                 !inMonth && "opacity-30",
                 isToday(day) && "border-foreground",
               )}
             >
-              <span className="font-medium">{format(day, "d")}</span>
+              <div className="flex items-center justify-between">
+                <span className="font-medium">{format(day, "d")}</span>
+                {soreness != null && (
+                  <span
+                    className={cn("h-2 w-2 rounded-full", sorenessTone(soreness).bg)}
+                    title={`Soreness ${soreness}/10`}
+                  />
+                )}
+              </div>
               <div className="flex-1 flex flex-wrap items-end gap-0.5">
                 {types && Array.from(types).map((t) => {
                   const I = icons[t];
@@ -79,6 +100,13 @@ export default async function CalendarPage({
           );
         })}
       </div>
+
+      <p className="text-[11px] text-muted-foreground flex items-center gap-3 pt-1">
+        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500/70" />0–2</span>
+        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-yellow-500/70" />3–4</span>
+        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-500/80" />5–6</span>
+        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500/80" />7+</span>
+      </p>
     </div>
   );
 }
