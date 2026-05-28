@@ -7,6 +7,7 @@ import { signOut } from "@/app/login/actions";
 import type { Session, DailyCheckin } from "@/types/db";
 import type { TrainingType } from "@/lib/constants";
 import { sorenessTone } from "@/lib/checkin-ui";
+import { Logo } from "@/components/logo";
 
 const typeMeta: Record<TrainingType, { label: string; Icon: typeof Dumbbell }> = {
   gym: { label: "Gym", Icon: Dumbbell },
@@ -49,10 +50,13 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-baseline justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{format(today, "EEEE")}</p>
-          <h1 className="text-2xl font-semibold">{format(today, "MMMM d")}</h1>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Logo size={40} />
+          <div>
+            <p className="text-sm text-muted-foreground leading-none">{format(today, "EEEE")}</p>
+            <h1 className="text-2xl font-semibold leading-tight">{format(today, "MMMM d")}</h1>
+          </div>
         </div>
         <form action={signOut}>
           <button className="text-xs text-muted-foreground">Sign out</button>
