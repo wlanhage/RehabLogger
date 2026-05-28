@@ -22,6 +22,8 @@ export async function saveProfile(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
 
+  const training_types = formData.getAll("training_types").map(String).filter(Boolean);
+
   const row = {
     user_id: user.id,
     display_name: str(formData.get("display_name")),
@@ -30,15 +32,18 @@ export async function saveProfile(formData: FormData) {
     weight_kg: num(formData.get("weight_kg")),
     height_cm: num(formData.get("height_cm")),
     rehab_focus: str(formData.get("rehab_focus")),
+    problem_started: str(formData.get("problem_started")),
     goals: str(formData.get("goals")),
     notes: str(formData.get("notes")),
+    training_types,
     updated_at: new Date().toISOString(),
   };
 
   const { error } = await supabase.from("profiles").upsert(row, { onConflict: "user_id" });
   if (error) throw error;
 
+  revalidatePath("/profile");
   revalidatePath("/coach");
-  revalidatePath("/coach/profile");
+  revalidatePath("/add");
   return { ok: true };
 }

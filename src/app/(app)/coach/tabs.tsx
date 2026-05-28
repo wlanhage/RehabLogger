@@ -4,9 +4,8 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { href: "/coach", label: "Plan" },
+  { href: "/coach",      label: "Plan" },
   { href: "/coach/chat", label: "Chat" },
-  { href: "/coach/profile", label: "Profile" },
 ];
 
 export function CoachTabs() {

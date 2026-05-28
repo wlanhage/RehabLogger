@@ -1,14 +1,9 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { Dumbbell, Bike, Footprints, Volleyball, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
-
-const options = [
-  { slug: "gym", href: "/add/gym", label: "Gym", Icon: Dumbbell },
-  { slug: "cycling", href: "/add/cardio/cycling", label: "Cycling", Icon: Bike },
-  { slug: "walking", href: "/add/cardio/walking", label: "Walking", Icon: Footprints },
-  { slug: "football", href: "/add/cardio/football", label: "Football", Icon: Volleyball },
-];
+import { createClient } from "@/lib/supabase/server";
+import { getType, DEFAULT_ENABLED } from "@/lib/training-types";
 
 function safeDate(d?: string): string | null {
   if (!d) return null;
@@ -25,6 +20,18 @@ export default async function AddPage({
   const date = safeDate(sp.date);
   const qs = date ? `?date=${date}` : "";
 
+  const supabase = await createClient();
+  const { data: profile } = await supabase.from("profiles").select("training_types").maybeSingle();
+  const enabled = (profile?.training_types as string[] | null) ?? DEFAULT_ENABLED;
+
+  const options = enabled
+    .map((slug) => getType(slug))
+    .filter((t): t is NonNullable<ReturnType<typeof getType>> => Boolean(t))
+    .map((t) => {
+      const href = t.flow === "gym" ? `/add/gym` : `/add/cardio/${t.slug}`;
+      return { ...t, href };
+    });
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -39,16 +46,25 @@ export default async function AddPage({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {options.map(({ href, label, Icon }) => (
-          <Link key={href} href={`${href}${qs}`}>
-            <Card className="aspect-square flex flex-col items-center justify-center gap-2">
-              <Icon className="h-8 w-8" />
-              <span className="font-medium">{label}</span>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      {options.length === 0 ? (
+        <Card>
+          <p className="text-sm">
+            You haven&apos;t picked any activities yet. Head to{" "}
+            <Link href="/profile" className="underline">Profile</Link> and choose what you train.
+          </p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {options.map(({ slug, label, icon: Icon, href }) => (
+            <Link key={slug} href={`${href}${qs}`}>
+              <Card className="aspect-square flex flex-col items-center justify-center gap-2 text-center">
+                <Icon className="h-8 w-8" />
+                <span className="font-medium text-sm">{label}</span>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

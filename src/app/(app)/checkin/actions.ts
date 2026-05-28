@@ -18,7 +18,6 @@ export async function saveCheckin(formData: FormData) {
 
   const date = safeDate(formData.get("date") ? String(formData.get("date")) : null);
   const soreness = Number(formData.get("soreness") ?? 0);
-  const location = String(formData.get("location") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
   const { error } = await supabase.from("daily_checkins").upsert(
@@ -26,7 +25,7 @@ export async function saveCheckin(formData: FormData) {
       user_id: user.id,
       date,
       soreness,
-      location,
+      location: null,
       notes,
       updated_at: new Date().toISOString(),
     },

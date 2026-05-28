@@ -1,15 +1,15 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PlusCircle, Calendar, Download, Sparkles } from "lucide-react";
+import { Home, PlusCircle, Calendar, Sparkles, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/add", label: "Add", icon: PlusCircle },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/coach", label: "Coach", icon: Sparkles },
-  { href: "/export", label: "Export", icon: Download },
+  { href: "/",        label: "Home",     icon: Home       },
+  { href: "/add",     label: "Add",      icon: PlusCircle },
+  { href: "/calendar",label: "Calendar", icon: Calendar   },
+  { href: "/coach",   label: "Coach",    icon: Sparkles   },
+  { href: "/profile", label: "Profile",  icon: User       },
 ];
 
 export function BottomNav() {

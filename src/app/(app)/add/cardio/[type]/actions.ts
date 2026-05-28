@@ -1,6 +1,6 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
-import { TRAINING_TYPES, type TrainingType } from "@/lib/constants";
+import { getType, flowFor } from "@/lib/training-types";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -11,8 +11,8 @@ function safeDate(raw: string | null): string {
 }
 
 export async function createCardioSession(formData: FormData) {
-  const type = String(formData.get("type") ?? "") as TrainingType;
-  if (!TRAINING_TYPES.includes(type) || type === "gym") throw new Error("Invalid type");
+  const type = String(formData.get("type") ?? "");
+  if (!getType(type) || flowFor(type) !== "cardio") throw new Error("Invalid type");
 
   const duration = formData.get("duration");
   const distance = formData.get("distance");

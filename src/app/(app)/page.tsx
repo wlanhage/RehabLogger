@@ -2,19 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import Link from "next/link";
-import { Dumbbell, Bike, Footprints, Volleyball, HeartPulse, ChevronRight } from "lucide-react";
-import { signOut } from "@/app/login/actions";
-import type { Session, DailyCheckin } from "@/types/db";
-import type { TrainingType } from "@/lib/constants";
+import { HeartPulse, ChevronRight } from "lucide-react";
+import type { Session, DailyCheckin, Profile } from "@/types/db";
 import { sorenessTone } from "@/lib/checkin-ui";
 import { Logo } from "@/components/logo";
-
-const typeMeta: Record<TrainingType, { label: string; Icon: typeof Dumbbell }> = {
-  gym: { label: "Gym", Icon: Dumbbell },
-  cycling: { label: "Cycling", Icon: Bike },
-  walking: { label: "Walking", Icon: Footprints },
-  football: { label: "Football", Icon: Volleyball },
-};
+import { iconFor, labelFor } from "@/lib/training-types";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -23,7 +15,7 @@ export default async function HomePage() {
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
-  const [{ data: weekSessions }, { data: recent }, { data: todayCheckin }] = await Promise.all([
+  const [{ data: weekSessions }, { data: recent }, { data: todayCheckin }, { data: profile }] = await Promise.all([
     supabase
       .from("sessions")
       .select("*")
@@ -38,11 +30,17 @@ export default async function HomePage() {
       .order("created_at", { ascending: false })
       .limit(5),
     supabase.from("daily_checkins").select("*").eq("date", todayISO).maybeSingle(),
+    supabase.from("profiles").select("training_types").maybeSingle(),
   ]);
 
-  const counts: Record<TrainingType, number> = { gym: 0, cycling: 0, walking: 0, football: 0 };
+  const enabled = ((profile as Pick<Profile, "training_types"> | null)?.training_types ?? []) as string[];
+
+  // Counts only for enabled types so the dashboard reflects the user's setup.
+  const counts: Record<string, number> = {};
+  enabled.forEach((t) => (counts[t] = 0));
   (weekSessions ?? []).forEach((s: Session) => {
-    counts[s.type] = (counts[s.type] ?? 0) + 1;
+    if (enabled.includes(s.type)) counts[s.type] = (counts[s.type] ?? 0) + 1;
+    else counts[s.type] = (counts[s.type] ?? 0) + 1; // still show types user has logged before
   });
 
   const latest = recent?.[0];
@@ -58,9 +56,6 @@ export default async function HomePage() {
             <h1 className="text-2xl font-semibold leading-tight">{format(today, "MMMM d")}</h1>
           </div>
         </div>
-        <form action={signOut}>
-          <button className="text-xs text-muted-foreground">Sign out</button>
-        </form>
       </header>
 
       <Link href="/checkin">
@@ -76,12 +71,11 @@ export default async function HomePage() {
             <p className="font-medium">Today&apos;s check-in</p>
             {checkin ? (
               <p className="text-sm text-muted-foreground">
-                Soreness {checkin.soreness}/10
-                {checkin.location ? ` · ${checkin.location}` : ""}
+                Feel {checkin.soreness}/10
                 <span className="ml-1 underline">edit</span>
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground">Log how your legs feel today</p>
+              <p className="text-sm text-muted-foreground">How does your body feel today?</p>
             )}
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -93,10 +87,10 @@ export default async function HomePage() {
         {latest ? (
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">{typeMeta[latest.type as TrainingType].label}</p>
+              <p className="font-medium">{labelFor(latest.type)}</p>
               <p className="text-sm text-muted-foreground">{format(new Date(latest.date), "MMM d")}</p>
             </div>
-            {(() => { const I = typeMeta[latest.type as TrainingType].Icon; return <I className="h-6 w-6" />; })()}
+            {(() => { const I = iconFor(latest.type); return <I className="h-6 w-6" />; })()}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">No activity yet.</p>
@@ -105,20 +99,27 @@ export default async function HomePage() {
 
       <section>
         <h2 className="text-sm font-medium text-muted-foreground mb-2">This week</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {(Object.keys(typeMeta) as TrainingType[]).map((t) => {
-            const { label, Icon } = typeMeta[t];
-            return (
-              <Card key={t} className="flex items-center gap-3">
-                <Icon className="h-5 w-5" />
-                <div>
-                  <p className="text-2xl font-semibold leading-none">{counts[t]}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{label}</p>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+        {Object.keys(counts).length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No activities configured. Pick some on{" "}
+            <Link href="/profile" className="underline">Profile</Link>.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {Object.keys(counts).map((slug) => {
+              const Icon = iconFor(slug);
+              return (
+                <Card key={slug} className="flex items-center gap-3">
+                  <Icon className="h-5 w-5" />
+                  <div>
+                    <p className="text-2xl font-semibold leading-none">{counts[slug]}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{labelFor(slug)}</p>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section>
@@ -128,14 +129,14 @@ export default async function HomePage() {
             <p className="text-sm text-muted-foreground">Nothing yet.</p>
           )}
           {(recent ?? []).map((s: Session) => {
-            const { label, Icon } = typeMeta[s.type as TrainingType];
+            const Icon = iconFor(s.type);
             return (
               <Link key={s.id} href={`/calendar/${s.date}`}>
                 <Card className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Icon className="h-5 w-5" />
                     <div>
-                      <p className="font-medium">{label}</p>
+                      <p className="font-medium">{labelFor(s.type)}</p>
                       <p className="text-xs text-muted-foreground">{format(new Date(s.date), "EEE, MMM d")}</p>
                     </div>
                   </div>

@@ -8,7 +8,8 @@ create table if not exists public.sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   date date not null default (current_date),
-  type text not null check (type in ('gym','cycling','walking','football')),
+  -- Free-form slug; valid values are defined in src/lib/training-types.ts
+  type text not null,
   duration_minutes integer,
   distance_km numeric(6,2),
   notes text,
@@ -66,8 +67,11 @@ create table if not exists public.profiles (
   weight_kg numeric(5,2),
   height_cm integer,
   rehab_focus text,
+  problem_started text,
   goals text,
   notes text,
+  training_types text[] default array['gym','cycling','walking','football'],
+  onboarded_at timestamptz,
   updated_at timestamptz not null default now()
 );
 alter table public.profiles enable row level security;

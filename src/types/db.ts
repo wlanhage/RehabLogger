@@ -1,10 +1,9 @@
-import type { TrainingType } from "@/lib/constants";
-
 export type Session = {
   id: string;
   user_id: string;
   date: string;
-  type: TrainingType;
+  /** Free-form training-type slug (see src/lib/training-types.ts). */
+  type: string;
   duration_minutes: number | null;
   distance_km: number | null;
   notes: string | null;
@@ -43,8 +42,14 @@ export type Profile = {
   weight_kg: number | null;
   height_cm: number | null;
   rehab_focus: string | null;
+  /** When the rehab issue started (free-form, e.g. "March 2026"). */
+  problem_started: string | null;
   goals: string | null;
   notes: string | null;
+  /** Slugs of training types the user does. */
+  training_types: string[] | null;
+  /** Set once the user finishes onboarding. */
+  onboarded_at: string | null;
   updated_at: string;
 };
 

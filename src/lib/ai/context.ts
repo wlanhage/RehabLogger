@@ -3,19 +3,21 @@ import { format, subDays } from "date-fns";
 import { GYM_EXERCISES } from "@/lib/constants";
 import type { Profile, Session, GymSet, RehabFollowup, DailyCheckin } from "@/types/db";
 
-export const COACH_SYSTEM_PROMPT = `Du är AI-coachen i appen "Rehab Logger" — en plattform för långsiktig rehabilitering och träningsprogression för en enskild användare.
+export const COACH_SYSTEM_PROMPT = `Du är AI-coachen i appen "Rehab Logger" — en plattform för långsiktig träning, återhämtning och eventuell rehabilitering för en enskild användare.
 
 DITT SYFTE
-- Hjälpa användaren att rehabilitera säkert och stegvis komma tillbaka till löpning och idrott.
-- Optimera för det långa loppet: load management, vävnadskapacitet, gradvis progression, och symptom-driven justering.
-- Ta hänsyn till användarens PROFIL, senaste TRÄNINGSDATA och DAGLIGA CHECK-INS i varje rekommendation. Dagliga check-ins är träningsoberoende ömhets-/känslighetsdata — de är den primära återhämtningssignalen mellan pass och bästa proxy för "reaktion" på ett givet pass. Hänvisa till specifika pass, smärtvärden, ömhetstrender eller anteckningar när det är relevant. Ge aldrig generiska råd när konkret data finns.
+- Hjälpa användaren att utvecklas hållbart: bygga prestationsförmåga, hantera load och återhämtning, och — om en skada eller rehab finns med i bilden — guida säker och stegvis återgång till full belastning.
+- Optimera för det långa loppet: progressiv overload, vävnadskapacitet, sömn, sömn, sömn, symptom-driven justering.
+- Ta hänsyn till användarens PROFIL (inkl. aktiviteter användaren tränar och eventuellt rehab-fokus), senaste TRÄNINGSDATA och DAGLIGA CHECK-INS i varje rekommendation. Dagliga check-ins är träningsoberoende mått på hur kroppen mår (skala 0–10 + fritext) — primär återhämtningssignal mellan pass och bästa proxy för "reaktion" på ett givet pass. Hänvisa till specifika pass, smärtvärden, ömhetstrender eller anteckningar när det är relevant. Ge aldrig generiska råd när konkret data finns.
+- Om användaren INTE har angett något rehab-fokus är ditt primära jobb prestation och hållbarhet, inte symtom — anpassa tonen därefter.
 
 GRUNDREGLER
 - Du är INTE en medicinsk professionell. Vid skarp/förvärrad smärta, nya symptom eller varningssignaler — säg till användaren att söka fysioterapeut eller läkare.
 - Var koncis och praktisk.
-- Föredra konservativ progression. Om smärta trendar upp eller reaktioner försämras → backa.
+- Föredra konservativ progression om symptom trendar upp; annars våga progressera när data stödjer det.
 - Använd användarens enheter (kg, km, minuter). Hitta aldrig på data som inte finns i kontexten.
-- Håll dig till ämnet (rehab, träning, återhämtning, sömn, grundläggande näring kopplat till rehab). Avled artigt off-topic-frågor.
+- Föreslå endast aktiviteter som finns i användarens "Activities"-lista (eller styrketräning från GYM_EXERCISES). Föreslå inte sporter användaren inte tränar.
+- Håll dig till ämnet (träning, rehab, återhämtning, sömn, grundläggande näring kopplat till prestation/återhämtning). Avled artigt off-topic-frågor.
 
 SPRÅK
 - Svara ALLTID på svenska, oavsett vilket språk användaren skriver på.
@@ -133,13 +135,17 @@ export function formatContextForPrompt(ctx: CoachContext): string {
     if (profile.age) profileLines.push(`Age: ${profile.age}`);
     if (profile.weight_kg) profileLines.push(`Weight: ${profile.weight_kg} kg`);
     if (profile.height_cm) profileLines.push(`Height: ${profile.height_cm} cm`);
-    if (profile.rehab_focus) profileLines.push(`Rehab focus: ${profile.rehab_focus}`);
+    if (profile.rehab_focus) profileLines.push(`Current focus / injury: ${profile.rehab_focus}`);
+    if (profile.problem_started) profileLines.push(`Started: ${profile.problem_started}`);
     if (profile.goals) profileLines.push(`Goals: ${profile.goals}`);
     if (profile.notes) profileLines.push(`Notes: ${profile.notes}`);
+    if (profile.training_types && profile.training_types.length) {
+      profileLines.push(`Activities: ${profile.training_types.join(", ")}`);
+    }
   }
   const profileBlock = profileLines.length
     ? profileLines.join("\n")
-    : "(No profile filled in yet — ask the user to complete /coach/profile.)";
+    : "(No profile filled in yet — ask the user to complete their Profile.)";
 
   const sessionLines: string[] = [];
   for (const s of sessions) {

@@ -1,5 +1,5 @@
-export const TRAINING_TYPES = ["gym", "cycling", "walking", "football"] as const;
-export type TrainingType = (typeof TRAINING_TYPES)[number];
+// NOTE: Training types are now user-configurable. See src/lib/training-types.ts
+// for the master list. Anything in this file is global and not type-specific.
 
 export const GYM_EXERCISES = [
   "Bulgarian Split Squat",
@@ -13,6 +13,8 @@ export const GYM_EXERCISES = [
 
 export const SET_FORMATS = ["2x8", "3x8", "3x10", "3x12", "3x15", "custom"] as const;
 
+// Legacy — only used by the old training-day follow-up form. Kept to avoid
+// breaking imports; new daily check-ins skip location entirely.
 export const PAIN_LOCATIONS = [
   "Left shin inside",
   "Left shin front",
@@ -22,12 +24,4 @@ export const PAIN_LOCATIONS = [
   "Right shin outside",
   "Diffuse",
   "Other",
-] as const;
-
-export const REACTIONS = [
-  "No reaction",
-  "Sore 1 day",
-  "Sore 2 days",
-  "Sore 3–5 days",
-  "Worse than usual",
 ] as const;

@@ -1,17 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, startOfWeek, endOfWeek, isSameMonth, isToday } from "date-fns";
 import Link from "next/link";
-import { Dumbbell, Bike, Footprints, Volleyball } from "lucide-react";
-import type { TrainingType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { sorenessTone } from "@/lib/checkin-ui";
-
-const icons: Record<TrainingType, typeof Dumbbell> = {
-  gym: Dumbbell,
-  cycling: Bike,
-  walking: Footprints,
-  football: Volleyball,
-};
+import { iconFor } from "@/lib/training-types";
 
 export default async function CalendarPage({
   searchParams,
@@ -40,8 +32,8 @@ export default async function CalendarPage({
       .lte("date", format(gridEnd, "yyyy-MM-dd")),
   ]);
 
-  const trainingMap = new Map<string, Set<TrainingType>>();
-  (sessions ?? []).forEach((s: { date: string; type: TrainingType }) => {
+  const trainingMap = new Map<string, Set<string>>();
+  (sessions ?? []).forEach((s: { date: string; type: string }) => {
     if (!trainingMap.has(s.date)) trainingMap.set(s.date, new Set());
     trainingMap.get(s.date)!.add(s.type);
   });
@@ -92,7 +84,7 @@ export default async function CalendarPage({
               </div>
               <div className="flex-1 flex flex-wrap items-end gap-0.5">
                 {types && Array.from(types).map((t) => {
-                  const I = icons[t];
+                  const I = iconFor(t);
                   return <I key={t} className="h-3 w-3" />;
                 })}
               </div>

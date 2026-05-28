@@ -31,6 +31,7 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isAuthRoute = pathname.startsWith("/login");
+  const isOnboardingRoute = pathname.startsWith("/onboarding");
 
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone();
@@ -42,6 +43,19 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  // Gate the app on onboarding completion.
+  if (user && !isAuthRoute && !isOnboardingRoute) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarded_at")
+      .maybeSingle();
+    if (!profile?.onboarded_at) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;

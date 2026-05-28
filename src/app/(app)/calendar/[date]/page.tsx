@@ -4,17 +4,11 @@ import { format, parseISO, isToday, isFuture } from "date-fns";
 import Link from "next/link";
 import { ChevronLeft, Plus, HeartPulse } from "lucide-react";
 import type { Session, GymSet, RehabFollowup, DailyCheckin } from "@/types/db";
-import type { TrainingType } from "@/lib/constants";
 import { DeleteSessionButton } from "./session-actions";
 import { sorenessTone } from "@/lib/checkin-ui";
 import { cn } from "@/lib/utils";
+import { labelFor, flowFor } from "@/lib/training-types";
 
-const typeLabel: Record<TrainingType, string> = {
-  gym: "Gym",
-  cycling: "Cycling",
-  walking: "Walking",
-  football: "Football",
-};
 
 export default async function DayPage({
   params,
@@ -121,11 +115,11 @@ export default async function DayPage({
       {(sessions ?? []).map((s: Session) => {
         const f = followupBySession.get(s.id);
         const gs = setsBySession.get(s.id) ?? [];
-        const isGymOpen = s.type === "gym" && !f;
+        const isGymOpen = flowFor(s.type) === "gym" && !f;
         return (
           <Card key={s.id} className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <h2 className="font-semibold">{typeLabel[s.type as TrainingType]}</h2>
+              <h2 className="font-semibold">{labelFor(s.type)}</h2>
               {s.duration_minutes && (
                 <span className="text-sm text-muted-foreground">{s.duration_minutes} min</span>
               )}
