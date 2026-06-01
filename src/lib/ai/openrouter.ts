@@ -43,6 +43,14 @@ export async function chatComplete(
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
+    if (res.status === 402) {
+      throw new Error(
+        "OpenRouter is out of credits for this request. Top up at https://openrouter.ai/settings/credits and try again.",
+      );
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new Error("OpenRouter rejected the API key. Check OPENROUTER_API_KEY.");
+    }
     throw new Error(`OpenRouter ${res.status}: ${text || res.statusText}`);
   }
 

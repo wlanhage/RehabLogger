@@ -86,7 +86,7 @@ ${contextBlock}
       { role: "system", content: COACH_SYSTEM_PROMPT },
       { role: "user", content: userPrompt },
     ],
-    { temperature: 0.4, maxTokens: 2500, json: true },
+    { temperature: 0.4, maxTokens: 1500, json: true },
   );
 
   // Validate before saving — if parsing fails, save raw text and let UI fall back.
