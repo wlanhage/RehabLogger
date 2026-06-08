@@ -12,10 +12,8 @@ export type ExportRow = {
   weight: number | string;
   duration: number | string;
   pain_score: number | string;
-  pain_location: string;
   rpe: number | string;
   daily_soreness: number | string;
-  daily_location: string;
   notes: string;
 };
 
@@ -57,9 +55,9 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
   ]);
 
   type GS = { session_id: string; exercise: string; sets: number | null; reps: number | null; weight: number | null; notes: string | null };
-  type FU = { session_id: string; pain_score: number | null; pain_location: string | null; rpe: number | null };
+  type FU = { session_id: string; pain_score: number | null; rpe: number | null };
   type S = { id: string; date: string; type: string; duration_minutes: number | null; notes: string | null };
-  type CK = { date: string; soreness: number | null; location: string | null; notes: string | null };
+  type CK = { date: string; soreness: number | null; notes: string | null };
 
   const setsBySession = new Map<string, GS[]>();
   ((sets ?? []) as GS[]).forEach((s) => {
@@ -78,17 +76,14 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
     weight: "",
     duration: "",
     pain_score: "",
-    pain_location: "",
     rpe: "",
     daily_soreness: "",
-    daily_location: "",
   } as const;
 
   for (const s of (sessions ?? []) as S[]) {
     const f = fuBySession.get(s.id);
     const fuFields = {
       pain_score: f?.pain_score ?? "",
-      pain_location: f?.pain_location ?? "",
       rpe: f?.rpe ?? "",
     };
     if (s.type === "gym") {
@@ -135,7 +130,6 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
       date: c.date,
       training_type: "checkin",
       daily_soreness: c.soreness ?? "",
-      daily_location: c.location ?? "",
       notes: c.notes ?? "",
     });
   }

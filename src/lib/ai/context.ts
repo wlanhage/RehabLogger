@@ -152,7 +152,7 @@ export function formatContextForPrompt(ctx: CoachContext): string {
   for (const s of sessions) {
     const f = followupBySession.get(s.id);
     const fStr = f
-      ? ` | pain ${f.pain_score ?? "?"}/10${f.pain_location ? ` (${f.pain_location})` : ""}, reaction: ${f.reaction ?? "?"}, RPE ${f.rpe ?? "?"}/10`
+      ? ` | pain ${f.pain_score ?? "?"}/10, RPE ${f.rpe ?? "?"}/10`
       : " | no follow-up";
 
     if (s.type === "gym") {

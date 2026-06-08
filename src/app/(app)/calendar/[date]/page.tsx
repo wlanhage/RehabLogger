@@ -148,7 +148,7 @@ export default async function DayPage({
             {f && (
               <div className="border-t border-border pt-3 text-sm grid grid-cols-2 gap-y-1">
                 <span className="text-muted-foreground">Pain</span>
-                <span>{f.pain_score}/10 {f.pain_location ? `· ${f.pain_location}` : ""}</span>
+                <span>{f.pain_score}/10</span>
                 <span className="text-muted-foreground">RPE</span>
                 <span>{f.rpe}/10</span>
               </div>

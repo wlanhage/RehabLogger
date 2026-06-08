@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 export async function saveFollowup(formData: FormData) {
   const session_id = String(formData.get("session_id"));
   const pain_score = Number(formData.get("pain_score") ?? 0);
-  const pain_location = String(formData.get("pain_location") ?? "");
   const rpe = Number(formData.get("rpe") ?? 1);
 
   const supabase = await createClient();
@@ -29,7 +28,7 @@ export async function saveFollowup(formData: FormData) {
       session_id,
       user_id: user.id,
       pain_score,
-      pain_location,
+      pain_location: null,
       reaction: null,
       rpe,
     },
