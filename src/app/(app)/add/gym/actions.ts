@@ -51,11 +51,13 @@ export async function saveGymSet(input: {
   const { id, ...rest } = input;
   const hasData =
     rest.sets != null || rest.reps != null || rest.weight != null || (rest.notes ?? "") !== "";
-  const { error } = await supabase
-    .from("gym_sets")
-    .update({ ...rest, skipped: hasData ? false : undefined })
-    .eq("id", id);
-  if (error) throw error;
+  // Conditional spread — never send `skipped: undefined` to PostgREST.
+  const patch = { ...rest, ...(hasData ? { skipped: false } : {}) };
+  const { error } = await supabase.from("gym_sets").update(patch).eq("id", id);
+  if (error) {
+    console.error("saveGymSet failed:", error);
+    throw new Error(error.message || "Failed to save exercise");
+  }
 }
 
 export async function skipGymSet(id: string) {
@@ -71,7 +73,10 @@ export async function skipGymSet(id: string) {
       set_format: null,
     })
     .eq("id", id);
-  if (error) throw error;
+  if (error) {
+    console.error("skipGymSet failed:", error);
+    throw new Error(error.message || "Failed to skip exercise");
+  }
 }
 
 export async function finishSession(sessionId: string) {
