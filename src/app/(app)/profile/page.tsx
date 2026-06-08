@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "./profile-form";
 import { ExportSection } from "./export-section";
+import { PushNotifications } from "@/components/push-notifications";
 import { signOut } from "@/app/login/actions";
 import { Card } from "@/components/ui/card";
 import type { Profile } from "@/types/db";
@@ -19,6 +20,13 @@ export default async function ProfilePage() {
       </header>
 
       <ProfileForm initial={(data as Profile | null) ?? null} />
+
+      <section className="space-y-3 pt-2">
+        <h2 className="text-lg font-semibold">Notifications</h2>
+        <Card>
+          <PushNotifications />
+        </Card>
+      </section>
 
       <section className="space-y-3 pt-2">
         <h2 className="text-lg font-semibold">Export data</h2>
