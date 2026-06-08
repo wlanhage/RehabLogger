@@ -15,7 +15,7 @@ Mobile-first personal rehab and training tracker. Next.js (App Router) + Supabas
    ```bash
    cp .env.local.example .env.local
    # fill in NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
-   # and (for the AI coach) OPENROUTER_API_KEY
+   # and (for the AI coach) GEMINI_API_KEY — grab one at https://aistudio.google.com/apikey
    ```
 
 4. **Run the schema** — open the Supabase SQL editor and paste the contents of [`supabase/schema.sql`](supabase/schema.sql). Creates `sessions`, `gym_sets`, `rehab_followups`, `profiles`, `weekly_plans`, `chat_messages` plus row-level security policies that scope every row to `auth.uid()`.
@@ -86,9 +86,9 @@ Routes under `/coach` (also reachable from the bottom nav):
 - **Chat** (`/coach/chat`) — short conversational coach. Each message rebuilds the same context (profile + last 14 days) before calling the model, so it always reflects your latest data. Last 20 turns are sent as history. Persisted in `chat_messages`.
 - **Profile** (`/coach/profile`) — name, sex, age, weight, height, rehab focus, goals, free-form notes. This is the user context the AI reads on every request. Saved in `profiles`.
 
-The system prompt and context formatter live in [`src/lib/ai/context.ts`](src/lib/ai/context.ts). The OpenRouter client is in [`src/lib/ai/openrouter.ts`](src/lib/ai/openrouter.ts) — plain `fetch`, no extra dependency.
+The system prompt and context formatter live in [`src/lib/ai/context.ts`](src/lib/ai/context.ts). The Gemini client is in [`src/lib/ai/gemini.ts`](src/lib/ai/gemini.ts) — plain `fetch`, no extra dependency.
 
-**Model:** defaults to `anthropic/claude-sonnet-4`. Override with `OPENROUTER_MODEL` (any model slug from [openrouter.ai/models](https://openrouter.ai/models)).
+**Model:** defaults to `gemini-2.5-flash` (free tier: 15 req/min, 1500 req/day). Override with `GEMINI_MODEL` (e.g. `gemini-2.5-pro` for higher quality).
 
 ## Notes
 

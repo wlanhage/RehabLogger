@@ -1,6 +1,6 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
-import { chatComplete } from "@/lib/ai/openrouter";
+import { chatComplete } from "@/lib/ai/gemini";
 import {
   COACH_SYSTEM_PROMPT,
   formatContextForPrompt,
