@@ -54,6 +54,39 @@ function buildPayload(
   };
 }
 
+// Fallback chain when the requested model is overloaded.
+const FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash-lite"];
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+async function callGemini(
+  model: string,
+  apiKey: string,
+  payload: object,
+): Promise<{ ok: true; content: string } | { ok: false; status: number; body: string }> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    return { ok: false, status: res.status, body };
+  }
+  const data = (await res.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>;
+    promptFeedback?: { blockReason?: string };
+  };
+  if (data.promptFeedback?.blockReason) {
+    throw new Error(`Gemini blocked the prompt: ${data.promptFeedback.blockReason}`);
+  }
+  const parts = data.candidates?.[0]?.content?.parts ?? [];
+  const content = parts.map((p) => p.text ?? "").join("").trim();
+  if (!content) return { ok: false, status: 502, body: "empty response" };
+  return { ok: true, content };
+}
+
 export async function chatComplete(
   messages: ChatTurn[],
   opts?: {
@@ -69,43 +102,38 @@ export async function chatComplete(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
 
-  const model = opts?.model ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const primary = opts?.model ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
+  const candidates = [primary, ...FALLBACK_MODELS.filter((m) => m !== primary)];
+  const payload = buildPayload(messages, opts);
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey,
-    },
-    body: JSON.stringify(buildPayload(messages, opts)),
-  });
+  // Retry 503/overloaded with exponential backoff before falling back to the
+  // next model in the chain. 429 / auth errors are fatal — surface immediately.
+  let lastErr = "";
+  for (const model of candidates) {
+    const delays = [800, 1600, 3200]; // ms — total ~5.6s before fallback
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      const r = await callGemini(model, apiKey, payload);
+      if (r.ok) return r.content;
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    if (res.status === 401 || res.status === 403) {
-      throw new Error("Gemini rejected the API key. Check GEMINI_API_KEY.");
+      if (r.status === 401 || r.status === 403) {
+        throw new Error("Gemini rejected the API key. Check GEMINI_API_KEY.");
+      }
+      if (r.status === 429) {
+        throw new Error("Gemini rate-limit hit. Wait a minute and try again.");
+      }
+
+      lastErr = `${model} ${r.status}: ${r.body || ""}`;
+
+      // 503 (UNAVAILABLE) / 500 / 504 — retry, then fall back.
+      const retriable = r.status === 503 || r.status === 500 || r.status === 504;
+      if (!retriable) break;
+      if (attempt < delays.length) {
+        console.warn(`Gemini ${model} overloaded (${r.status}), retrying in ${delays[attempt]}ms…`);
+        await sleep(delays[attempt]);
+      }
     }
-    if (res.status === 429) {
-      throw new Error("Gemini rate-limit hit. Wait a minute and try again, or upgrade your plan.");
-    }
-    throw new Error(`Gemini ${res.status}: ${text || res.statusText}`);
+    console.warn(`Gemini ${model} unavailable, trying fallback model…`);
   }
 
-  const data = (await res.json()) as {
-    candidates?: Array<{
-      content?: { parts?: Array<{ text?: string }> };
-      finishReason?: string;
-    }>;
-    promptFeedback?: { blockReason?: string };
-  };
-
-  if (data.promptFeedback?.blockReason) {
-    throw new Error(`Gemini blocked the prompt: ${data.promptFeedback.blockReason}`);
-  }
-
-  const parts = data.candidates?.[0]?.content?.parts ?? [];
-  const content = parts.map((p) => p.text ?? "").join("").trim();
-  if (!content) throw new Error("Gemini returned an empty response");
-  return content;
+  throw new Error(`Gemini unavailable across all models. Last error: ${lastErr}`);
 }
