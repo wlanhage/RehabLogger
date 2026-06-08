@@ -31,28 +31,43 @@ export async function generateWeeklyPlan() {
 
   const userPrompt = `Det är början på en ny träningsvecka (vecka som startar ${weekStart}).
 
-Baserat på användarens profil och de senaste två veckorna av träning, dagliga check-ins och rehab-data nedan — generera en konkret 7-dagars plan (Mån–Sön) för DENNA vecka.
+Generera en konkret 7-dagars plan (Mån–Sön) för DENNA vecka.
+
+KRITISKT — KONTEXT-HANTERING
+- Din ENDA datakälla är RECENT SESSIONS, DAILY CHECK-INS och GYM PROGRESSION i kontexten. Det är vad användaren FAKTISKT har gjort och känt.
+- Eventuella tidigare veckoplaner är INTE en datakälla. Användaren kan ha skippat hela pass eller övningar. Lita aldrig på vad som var planerat — bara på vad som loggats.
+- Planen är FRAMÅTBLICKANDE. Sammanfatta inte vad som hände förra veckan i löpande text — använd den datan tyst som grund för dina rekommendationer.
+- Om en övning saknas i GYM PROGRESSION för en längre period: behandla den som obekant, börja konservativt.
+- Om symptom (smärta/ömhet) trendar upp i check-ins → deload denna vecka.
+- Om träningsfrekvens varit låg → trappa upp långsamt, inte rakt tillbaka till föregående volym.
 
 REGLER FÖR PLANEN
-- Anpassa volym och intensitet efter senaste load och symptomtrend. Om smärta eller ömhet trendar upp → deload.
 - Inkludera minst en helt vilodag eller aktiv återhämtningsdag.
-- Hänvisa till specifika pass, check-ins eller GYM PROGRESSION i kontexten där det är relevant.
-- Konservativ progression.
+- Konservativ progression baserat på faktisk loggad data.
+- Hänvisa till specifika loggade pass eller faktiska vikter där det är relevant ("baserat på din 3×10 @22.5kg på Bulgarian Split Squat förra veckan…").
 
-GYM-DAGAR — VIKTIGT
-- För varje dag med "session_type": "gym" MÅSTE du fylla i "exercises"-arrayen med 3–6 konkreta övningar.
-- Välj ENDAST från AVAILABLE GYM EXERCISES-listan i kontexten (användaren kan bara logga dessa).
-- Sätt "sets", "reps" och "weight" baserat på GYM PROGRESSION-historiken. Standardprogression: +2,5–5 kg från senaste värdet om reaktionen var bra; håll eller backa om ömhet/smärta trendar upp.
-- "weight" är en sträng — använd t.ex. "60kg", "bodyweight", eller "55→60kg" för progression inom passet.
-- "notes" får innehålla tempo, fokus eller cue (t.ex. "tempo 3-1-1", "kontrollerad excentrisk").
+GYM-DAGAR
+- För varje "session_type": "gym" MÅSTE "exercises"-arrayen ha 3–6 konkreta övningar.
+- Välj ENDAST från AVAILABLE GYM EXERCISES-listan.
+- Sätt "sets", "reps" och "weight" baserat på SENASTE FAKTISKT LOGGADE värdet i GYM PROGRESSION. Standardprogression: +2,5–5 kg om reaktionen var bra; håll eller backa om ömhet trendar upp.
+- Om en övning aldrig loggats: starta på en konservativ vikt och markera i "notes" att det är start-vikt.
+- "weight" är en sträng — t.ex. "60kg", "bodyweight", "55→60kg".
+
+SUMMARY-FÄLTET
+- MAX 2 meningar. Veckans STRATEGI — inte recap av förra veckan.
+- Exempel på BRA summary: "Konservativ progression på underbensarbete; en extra vilodag eftersom ömheten trendat upp."
+- Exempel på DÅLIG summary: "Förra veckan tränade du fotboll på tisdag och gym på torsdag. Du hade ömhet som sjönk från 6/10 till 1/10. Denna vecka…" — det är retrospektion, inte strategi.
+
+KEY_FOCUS
+- MAX 1 mening. Headline för veckan.
 
 UTDATAFORMAT
-Svara med ENDAST giltig JSON som följer detta schema (inga code-fences, ingen extra text):
+Svara med ENDAST giltig JSON (inga code-fences, ingen extra text):
 
 {
   "week_start": "${weekStart}",
-  "summary": "1–3 meningar: snabb load-analys + veckans strategi.",
-  "key_focus": "Kort headline-takeaway, max 1 mening.",
+  "summary": "Max 2 meningar — veckans framåtblickande strategi.",
+  "key_focus": "1 mening — veckans headline.",
   "days": [
 ${dayList.split("\n").map((l) => {
   const [, wd, date] = l.trim().split(/\s+/);
