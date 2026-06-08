@@ -86,7 +86,10 @@ ${contextBlock}
       { role: "system", content: COACH_SYSTEM_PROMPT },
       { role: "user", content: userPrompt },
     ],
-    { temperature: 0.4, maxTokens: 1500, json: true },
+    // thinkingBudget: 0 disables Gemini 2.5's internal reasoning so the full
+    // output budget goes to the JSON response. Without this the plan gets
+    // truncated mid-document when reasoning eats most of maxOutputTokens.
+    { temperature: 0.4, maxTokens: 4000, json: true, thinkingBudget: 0 },
   );
 
   // Validate before saving — if parsing fails, save raw text and let UI fall back.

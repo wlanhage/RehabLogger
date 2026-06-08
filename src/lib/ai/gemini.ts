@@ -13,7 +13,18 @@ type GeminiContent = { role: "user" | "model"; parts: GeminiPart[] };
 
 function buildPayload(
   messages: ChatTurn[],
-  opts?: { temperature?: number; maxTokens?: number; json?: boolean },
+  opts?: {
+    temperature?: number;
+    maxTokens?: number;
+    json?: boolean;
+    /**
+     * Gemini 2.5 reasons internally before producing output. Those reasoning
+     * tokens count against maxOutputTokens, so a strict format response can
+     * silently get truncated. Pass 0 to disable thinking entirely, or a small
+     * budget (e.g. 512) for light reasoning.
+     */
+    thinkingBudget?: number;
+  },
 ) {
   // Gemini puts system messages in a dedicated top-level field, not the
   // conversation array. Concatenate any system turns into one block.
@@ -36,6 +47,9 @@ function buildPayload(
       temperature: opts?.temperature ?? 0.4,
       maxOutputTokens: opts?.maxTokens ?? 1024,
       ...(opts?.json ? { responseMimeType: "application/json" } : {}),
+      ...(opts?.thinkingBudget !== undefined
+        ? { thinkingConfig: { thinkingBudget: opts.thinkingBudget } }
+        : {}),
     },
   };
 }
@@ -48,6 +62,8 @@ export async function chatComplete(
     maxTokens?: number;
     /** Force JSON output via Gemini's responseMimeType. */
     json?: boolean;
+    /** Disable (0) or cap Gemini 2.5 internal reasoning tokens. */
+    thinkingBudget?: number;
   },
 ) {
   const apiKey = process.env.GEMINI_API_KEY;
