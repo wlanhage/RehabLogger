@@ -13,9 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SET_FORMATS } from "@/lib/constants";
-import { saveGymSet, finishSession } from "./actions";
+import { saveGymSet, skipGymSet, finishSession } from "./actions";
 import type { GymSet } from "@/types/db";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, SkipForward } from "lucide-react";
 
 type Draft = {
   id: string;
@@ -25,6 +25,7 @@ type Draft = {
   customReps: string;
   weight: string;
   notes: string;
+  skipped: boolean;
 };
 
 function toDraft(s: GymSet): Draft {
@@ -36,6 +37,7 @@ function toDraft(s: GymSet): Draft {
     customReps: s.reps?.toString() ?? "",
     weight: s.weight?.toString() ?? "",
     notes: s.notes ?? "",
+    skipped: s.skipped ?? false,
   };
 }
 
@@ -57,7 +59,11 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
   const saveTimer = useRef<number | null>(null);
 
   function update(patch: Partial<Draft>) {
-    setDrafts((arr) => arr.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+    setDrafts((arr) =>
+      arr.map((d, i) =>
+        i === index ? { ...d, ...patch, skipped: false } : d,
+      ),
+    );
     dirtyRef.current[current.id] = true;
   }
 
@@ -113,6 +119,27 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
     setIndex(Math.max(0, Math.min(total - 1, i)));
   }
 
+  async function skip() {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    await skipGymSet(current.id);
+    dirtyRef.current[current.id] = false;
+    setDrafts((arr) =>
+      arr.map((d, i) =>
+        i === index
+          ? {
+              ...d,
+              skipped: true,
+              customSets: "",
+              customReps: "",
+              weight: "",
+              notes: "",
+            }
+          : d,
+      ),
+    );
+    if (index < total - 1) setIndex(index + 1);
+  }
+
   async function finish() {
     if (dirtyRef.current[current.id]) await persist(current);
     await finishSession(sessionId);
@@ -122,7 +149,7 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
           Exercise {index + 1}/{total}
         </span>
         <div className="flex-1 mx-3 h-1 bg-muted rounded-full overflow-hidden">
@@ -133,7 +160,14 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
         </div>
       </div>
 
-      <h1 className="text-2xl font-semibold">{current.exercise}</h1>
+      <div className="flex items-baseline justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{current.exercise}</h1>
+        {current.skipped && (
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+            Skipped
+          </span>
+        )}
+      </div>
 
       <div className="space-y-4">
         <div className="space-y-2">
@@ -190,25 +224,37 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 pt-2">
+      <div className="space-y-2 pt-2">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => goTo(index - 1)}
+            disabled={index === 0}
+            aria-label="Previous exercise"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          {index < total - 1 ? (
+            <Button className="flex-1" size="lg" onClick={() => goTo(index + 1)}>
+              Next
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          ) : (
+            <Button className="flex-1" size="lg" onClick={finish}>
+              Finish workout
+            </Button>
+          )}
+        </div>
         <Button
-          variant="outline"
-          size="icon"
-          onClick={() => goTo(index - 1)}
-          disabled={index === 0}
+          type="button"
+          variant="ghost"
+          className="w-full text-muted-foreground"
+          onClick={skip}
         >
-          <ChevronLeft className="h-5 w-5" />
+          <SkipForward className="h-4 w-4" />
+          Skip this exercise
         </Button>
-        {index < total - 1 ? (
-          <Button className="flex-1" size="lg" onClick={() => goTo(index + 1)}>
-            Next
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        ) : (
-          <Button className="flex-1" size="lg" onClick={finish}>
-            Finish workout
-          </Button>
-        )}
       </div>
     </div>
   );

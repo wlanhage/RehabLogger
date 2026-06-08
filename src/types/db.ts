@@ -21,6 +21,7 @@ export type GymSet = {
   reps: number | null;
   weight: number | null;
   notes: string | null;
+  skipped: boolean;
 };
 
 export type RehabFollowup = {

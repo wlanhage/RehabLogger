@@ -47,7 +47,28 @@ export async function saveGymSet(input: {
 }) {
   const supabase = await createClient();
   const { id, ...rest } = input;
-  const { error } = await supabase.from("gym_sets").update(rest).eq("id", id);
+  const hasData =
+    rest.sets != null || rest.reps != null || rest.weight != null || (rest.notes ?? "") !== "";
+  const { error } = await supabase
+    .from("gym_sets")
+    .update({ ...rest, skipped: hasData ? false : undefined })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function skipGymSet(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("gym_sets")
+    .update({
+      skipped: true,
+      sets: null,
+      reps: null,
+      weight: null,
+      notes: null,
+      set_format: null,
+    })
+    .eq("id", id);
   if (error) throw error;
 }
 

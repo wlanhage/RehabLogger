@@ -28,7 +28,8 @@ create table if not exists public.gym_sets (
   sets integer,
   reps integer,
   weight numeric(6,2),
-  notes text
+  notes text,
+  skipped boolean not null default false
 );
 create index if not exists gym_sets_session_idx on public.gym_sets(session_id);
 

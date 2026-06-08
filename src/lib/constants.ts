@@ -2,9 +2,14 @@
 // for the master list. Anything in this file is global and not type-specific.
 
 export const GYM_EXERCISES = [
+  "Back Squat",
   "Bulgarian Split Squat",
   "Romanian Deadlift",
   "Leg Press",
+  "Hip Thrust",
+  "Walking Lunge",
+  "Leg Extension",
+  "Leg Curl",
   "Standing Calf Raise",
   "Seated Calf Raise",
   "Tibialis Raise",
