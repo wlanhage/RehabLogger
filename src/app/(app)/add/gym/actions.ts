@@ -33,7 +33,9 @@ export async function createGymSession(rawDate?: string) {
   const { error: setsErr } = await supabase.from("gym_sets").insert(rows);
   if (setsErr) throw setsErr;
 
-  revalidatePath(`/calendar/${date}`);
+  // NOTE: no revalidatePath here. This action is invoked during render of
+  // GymPage to lazily create the session, and revalidatePath inside a render
+  // throws in Next 16. The subsequent redirect re-fetches anyway.
   return { sessionId: session.id };
 }
 
