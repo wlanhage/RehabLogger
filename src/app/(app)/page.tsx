@@ -7,6 +7,8 @@ import type { Session, DailyCheckin, Profile } from "@/types/db";
 import { sorenessTone } from "@/lib/checkin-ui";
 import { Logo } from "@/components/logo";
 import { iconFor, labelFor } from "@/lib/training-types";
+import { loadIntelligence } from "@/lib/load/aggregate";
+import { TodayDecision } from "@/components/today-decision";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -33,6 +35,8 @@ export default async function HomePage() {
     supabase.from("profiles").select("training_types").maybeSingle(),
   ]);
 
+  const intelligence = await loadIntelligence();
+
   const enabled = ((profile as Pick<Profile, "training_types"> | null)?.training_types ?? []) as string[];
 
   // Counts only for enabled types so the dashboard reflects the user's setup.
@@ -58,6 +62,8 @@ export default async function HomePage() {
         </div>
       </header>
 
+      <TodayDecision decision={intelligence.decision} hasCheckin={!!checkin} />
+
       <Link href="/checkin">
         <Card className="flex items-center gap-3">
           <div
@@ -68,14 +74,14 @@ export default async function HomePage() {
             <HeartPulse className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <p className="font-medium">Today&apos;s check-in</p>
+            <p className="font-medium">Dagens check-in</p>
             {checkin ? (
               <p className="text-sm text-muted-foreground">
-                Feel {checkin.soreness}/10
-                <span className="ml-1 underline">edit</span>
+                Ömhet {Math.max(checkin.shin_tenderness_left ?? 0, checkin.shin_tenderness_right ?? 0)}/10
+                <span className="ml-1 underline">ändra</span>
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground">How does your body feel today?</p>
+              <p className="text-sm text-muted-foreground">Hur känns kroppen idag?</p>
             )}
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
