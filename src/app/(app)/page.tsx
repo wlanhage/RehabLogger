@@ -37,6 +37,16 @@ export default async function HomePage() {
 
   const intelligence = await loadIntelligence();
 
+  // Imported sessions still missing RPE/surface/jog-split.
+  const { data: needEnrich, count: enrichCount } = await supabase
+    .from("sessions")
+    .select("id", { count: "exact" })
+    .neq("imported_from", "manual")
+    .is("rpe", null)
+    .order("date", { ascending: true })
+    .limit(1);
+  const enrichOldestId = needEnrich?.[0]?.id ?? null;
+
   const enabled = ((profile as Pick<Profile, "training_types"> | null)?.training_types ?? []) as string[];
 
   // Counts only for enabled types so the dashboard reflects the user's setup.
@@ -63,6 +73,18 @@ export default async function HomePage() {
       </header>
 
       <TodayDecision decision={intelligence.decision} hasCheckin={!!checkin} />
+
+      {enrichCount && enrichCount > 0 && enrichOldestId && (
+        <Link
+          href={`/session/${enrichOldestId}/edit`}
+          className="flex items-center justify-between rounded-2xl border border-yellow-500/40 bg-card px-4 py-3 text-sm hover:bg-muted"
+        >
+          <span>
+            <span className="font-medium">{enrichCount} importerade pass</span> behöver RPE/underlag
+          </span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+      )}
 
       <Link
         href="/insights"

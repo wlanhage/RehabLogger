@@ -23,7 +23,8 @@ export type Recommendation =
   | "reduce_run_load"
   | "bike_instead"
   | "strength_only"
-  | "rest";
+  | "rest"
+  | "log_checkin";
 
 export type DailyDecision = {
   light: Light;
@@ -52,10 +53,16 @@ export type DecisionInput = {
   bodyKg: number | null;
   /** Impact sessions already logged in the current ISO week (Mon–today). */
   runsThisWeek: number;
+  /** Today's sleep quality 1–10 (optional). */
+  sleepQuality?: number | null;
+  /** Today's general fatigue 1–10 (optional). */
+  fatigue?: number | null;
 };
 
 /** How much to cut the dose after a red recovery response. */
 const RED_DOSE_REDUCTION = 0.8; // repeat at 80% of the load that caused the flare
+
+const IMPACT_RECS: Recommendation[] = ["run_allowed", "repeat_previous_run", "reduce_run_load"];
 
 const dayMs = 86_400_000;
 const hoursSince = (fromISO: string, todayISO: string) =>
@@ -73,6 +80,25 @@ export function tibialOf(runningMinutes: number, bodyKg: number | null, surface:
 }
 
 export function decideToday(input: DecisionInput): DailyDecision {
+  const d = rawDecision(input);
+
+  // #1 — Never clear impact training without today's morning check-in.
+  if (input.today == null && IMPACT_RECS.includes(d.recommendation)) {
+    return {
+      light: "yellow",
+      recommendation: "log_checkin",
+      tibialBudget: 0,
+      prescription: null,
+      coldStart: d.coldStart,
+      rationale:
+        "Logga morgonens check-in (tryckömhet vänster/höger) innan jag kan frige impact — " +
+        "det är dagsformen som avgör. Tills dess: cykel eller styrka går alltid bra.",
+    };
+  }
+  return d;
+}
+
+function rawDecision(input: DecisionInput): DailyDecision {
   const { today, recoveries, lastImpactDate, lastImpactResolved, bodyKg, runsThisWeek } = input;
   const coldStart = recoveries.length === 0;
 
@@ -85,6 +111,11 @@ export function decideToday(input: DecisionInput): DailyDecision {
 
   const trend = lagTrend(recoveries);
   const bestGreen = bestTolerableTibial(recoveries);
+
+  // #4 — poor systemic recovery blocks progression (not a red gate on its own).
+  const poorRecovery =
+    (input.sleepQuality != null && input.sleepQuality <= 3) ||
+    (input.fatigue != null && input.fatigue >= 8);
 
   // ---- RED gates ------------------------------------------------------------
   const redReasons: string[] = [];
@@ -122,8 +153,12 @@ export function decideToday(input: DecisionInput): DailyDecision {
   if (trend === "flat") yellowReasons.push("recovery-lagget förbättras inte ännu");
 
   if (yellowReasons.length > 0) {
-    // Inside the bone-recovery window → no impact at all today.
     if (insideRecoveryWindow) {
+      const nextDate = lastImpactDate
+        ? new Date(new Date(lastImpactDate + "T00:00:00").getTime() + MIN_HOURS_BETWEEN_IMPACT * 3_600_000)
+            .toISOString()
+            .slice(0, 10)
+        : null;
       return {
         light: "yellow",
         recommendation: "bike_instead",
@@ -132,10 +167,9 @@ export function decideToday(input: DecisionInput): DailyDecision {
         coldStart,
         rationale:
           `Gult — ${yellowReasons.join("; ")}. ` +
-          "Skenbenen behöver fönstret 48–96h efter impact. Cykla eller kör styrka idag, spring inte.",
+          `Skenbenen behöver 48–96h efter impact${nextDate ? ` (tidigast ${nextDate})` : ""}. Cykla eller kör styrka idag.`,
       };
     }
-    // Outside window but not clearly green → repeat last tolerated load, no increase.
     const repeatBudget = bestGreen ?? tibialOf(FIRST_RUN_TEMPLATE.running_minutes, bodyKg, FIRST_RUN_TEMPLATE.surface);
     return {
       light: "yellow",
@@ -165,10 +199,8 @@ export function decideToday(input: DecisionInput): DailyDecision {
     };
   }
 
-  // ---- DOSE RESPONSE: let the LAST impact's recovery govern progression -----
-  // Morning is fine and the recovery window has cleared. Now: was the previous
-  // dose tolerated? Red → reduce. Yellow → repeat. Green → allow a small bump.
-  const last = recoveries[0]; // newest first
+  // ---- DOSE RESPONSE: the LAST impact's recovery governs progression --------
+  const last = recoveries[0];
 
   if (last && last.status === "red") {
     const reduced = Math.round(last.tibial * RED_DOSE_REDUCTION * 10) / 10;
@@ -197,12 +229,7 @@ export function decideToday(input: DecisionInput): DailyDecision {
     };
   }
 
-  // last was green (or only green history). During rebuild we enforce
-  // "never add frequency AND load in the same week":
-  //  - 0 runs this week  → this is the week's run; allow a small load bump.
-  //  - 1 run this week    → adding a 2nd run IS the progression (frequency).
-  //                         Hold the load at the last tolerated dose, don't bump.
-  //  - 2+ runs this week  → enough impact frequency for rebuild; hold off.
+  // last was green. Enforce "never add frequency AND load in the same week".
   const repeatLoad =
     bestGreen ?? tibialOf(FIRST_RUN_TEMPLATE.running_minutes, bodyKg, FIRST_RUN_TEMPLATE.surface);
 
@@ -232,10 +259,24 @@ export function decideToday(input: DecisionInput): DailyDecision {
     };
   }
 
+  // 0 runs this week → week's run. Allow a bump unless systemic recovery is poor (#4).
+  if (poorRecovery) {
+    return {
+      light: "green",
+      recommendation: "repeat_previous_run",
+      tibialBudget: repeatLoad,
+      prescription: bestGreen
+        ? `Håll samma dos som senast (tibial budget ${repeatLoad} AU) — öka inte idag.`
+        : FIRST_RUN_TEMPLATE.label,
+      coldStart: false,
+      rationale:
+        `Skenbenen är grönt, men ${input.sleepQuality != null && input.sleepQuality <= 3 ? "sömnen är låg" : "tröttheten är hög"} idag. ` +
+        "Spring gärna, men öka inte belastningen när återhämtningen är nedsatt — upprepa förra passet.",
+    };
+  }
+
   const budget =
-    bestGreen != null
-      ? Math.round(bestGreen * (1 + GREEN_PROGRESSION) * 10) / 10
-      : repeatLoad;
+    bestGreen != null ? Math.round(bestGreen * (1 + GREEN_PROGRESSION) * 10) / 10 : repeatLoad;
 
   return {
     light: "green",

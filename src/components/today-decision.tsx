@@ -16,6 +16,7 @@ const REC_LABEL: Record<Recommendation, string> = {
   bike_instead: "Cykla istället",
   strength_only: "Bara styrka",
   rest: "Vila",
+  log_checkin: "Logga check-in",
 };
 
 export function TodayDecision({

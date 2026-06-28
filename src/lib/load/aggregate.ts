@@ -50,16 +50,46 @@ export async function loadIntelligence(days = 60): Promise<LoadIntelligence> {
   const sessionRows = (sessions ?? []) as Session[];
   const profileWeight = (profile as Pick<Profile, "weight_kg"> | null)?.weight_kg ?? null;
 
+  // Same-evening shin tenderness captured in the post-session follow-up seeds
+  // the recovery model. Pull it and key by the session's date.
+  const sessionDateById = new Map(sessionRows.map((s) => [s.id, s.date]));
+  const { data: followups } = sessionRows.length
+    ? await supabase
+        .from("rehab_followups")
+        .select("session_id, shin_tenderness_left, shin_tenderness_right")
+        .in("session_id", sessionRows.map((s) => s.id))
+    : { data: [] as { session_id: string; shin_tenderness_left: number | null; shin_tenderness_right: number | null }[] };
+
   // Latest known body weight: newest check-in weight, else profile.
   const latestWeighed = [...checkinRows].reverse().find((c) => c.body_weight_kg != null);
   const bodyKg = latestWeighed?.body_weight_kg ?? profileWeight;
 
-  // Check-in points (worse side governs).
-  const checkinPoints: CheckinPoint[] = checkinRows.map((c) => ({
-    date: c.date,
-    tendernessWorse: worse(c.shin_tenderness_left, c.shin_tenderness_right),
-    safeToRun: c.safe_to_run,
-  }));
+  // Merge morning check-ins + same-evening follow-up tenderness per date
+  // (worse side, worse reading governs).
+  const byDate = new Map<string, { tender: number[]; safe: "yes" | "unsure" | "no" | null }>();
+  for (const c of checkinRows) {
+    const w = worse(c.shin_tenderness_left, c.shin_tenderness_right);
+    const e = byDate.get(c.date) ?? { tender: [], safe: null };
+    if (w != null) e.tender.push(w);
+    e.safe = c.safe_to_run;
+    byDate.set(c.date, e);
+  }
+  for (const f of followups ?? []) {
+    const date = sessionDateById.get(f.session_id);
+    if (!date) continue;
+    const w = worse(f.shin_tenderness_left, f.shin_tenderness_right);
+    if (w == null) continue;
+    const e = byDate.get(date) ?? { tender: [], safe: null };
+    e.tender.push(w);
+    byDate.set(date, e);
+  }
+  const checkinPoints: CheckinPoint[] = [...byDate.entries()]
+    .map(([date, e]) => ({
+      date,
+      tendernessWorse: e.tender.length ? Math.max(...e.tender) : null,
+      safeToRun: e.safe,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   // Per-session load + per-day tibial aggregation.
   const dailyTibialMap = new Map<string, number>();
@@ -105,6 +135,8 @@ export async function loadIntelligence(days = 60): Promise<LoadIntelligence> {
     lastImpactResolved,
     bodyKg,
     runsThisWeek,
+    sleepQuality: todayCheckin?.sleep_quality ?? null,
+    fatigue: todayCheckin?.general_fatigue ?? null,
   });
 
   const acwr = rollingLoad(dailyTibial, todayISO);

@@ -56,6 +56,9 @@ create table if not exists public.rehab_followups (
   pain_location text,
   reaction text,
   rpe integer check (rpe between 1 and 10),
+  -- Same-evening shin tenderness (seeds the recovery-lag model)
+  shin_tenderness_left integer check (shin_tenderness_left between 0 and 10),
+  shin_tenderness_right integer check (shin_tenderness_right between 0 and 10),
   created_at timestamptz not null default now()
 );
 
