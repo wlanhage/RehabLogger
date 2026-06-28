@@ -8,6 +8,18 @@ export type Session = {
   distance_km: number | null;
   notes: string | null;
   created_at: string;
+  // Load Intelligence additions
+  rpe: number | null;
+  running_minutes: number | null;
+  surface: string | null;
+  shoes: string | null;
+  avg_hr: number | null;
+  max_hr: number | null;
+  calories: number | null;
+  pace_seconds_per_km: number | null;
+  body_kg: number | null;
+  imported_from: string;
+  external_id: string | null;
 };
 
 export type GymSet = {
@@ -71,6 +83,12 @@ export type DailyCheckin = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  // Load Intelligence additions
+  shin_tenderness_left: number | null;
+  shin_tenderness_right: number | null;
+  safe_to_run: "yes" | "unsure" | "no" | null;
+  sleep_quality: number | null;
+  body_weight_kg: number | null;
 };
 
 export type ChatMessage = {
