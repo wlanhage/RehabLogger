@@ -6,6 +6,7 @@ import {
   formatContextForPrompt,
   loadCoachContext,
 } from "@/lib/ai/context";
+import { loadIntelligence, formatLoadForPrompt } from "@/lib/load/aggregate";
 import type { ChatMessage } from "@/types/db";
 import { revalidatePath } from "next/cache";
 
@@ -29,7 +30,8 @@ export async function sendChatMessage(userText: string) {
 
   // Build context and recent history.
   const ctx = await loadCoachContext(14);
-  const contextBlock = formatContextForPrompt(ctx);
+  const li = await loadIntelligence();
+  const contextBlock = `${formatContextForPrompt(ctx)}\n\nLOAD INTELLIGENCE\n${formatLoadForPrompt(li)}`;
 
   const { data: history } = await supabase
     .from("chat_messages")

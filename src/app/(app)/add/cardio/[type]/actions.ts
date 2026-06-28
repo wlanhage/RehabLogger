@@ -14,8 +14,20 @@ export async function createCardioSession(formData: FormData) {
   const type = String(formData.get("type") ?? "");
   if (!getType(type) || flowFor(type) !== "cardio") throw new Error("Invalid type");
 
-  const duration = formData.get("duration");
-  const distance = formData.get("distance");
+  const numOrNull = (v: FormDataEntryValue | null) => {
+    if (v == null) return null;
+    const s = String(v).trim();
+    if (!s) return null;
+    const n = Number(s.replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const duration = numOrNull(formData.get("duration"));
+  const distance = numOrNull(formData.get("distance"));
+  const running_minutes = numOrNull(formData.get("running_minutes"));
+  const rpe = numOrNull(formData.get("rpe"));
+  const surfaceRaw = String(formData.get("surface") ?? "").trim();
+  const surface = surfaceRaw || null;
   const notes = formData.get("notes");
   const date = safeDate(formData.get("date") ? String(formData.get("date")) : null);
 
@@ -25,14 +37,29 @@ export async function createCardioSession(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
 
+  // Snapshot current body weight for accurate tibial-load scaling.
+  const { data: latestWeight } = await supabase
+    .from("daily_checkins")
+    .select("body_weight_kg")
+    .not("body_weight_kg", "is", null)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("weight_kg").maybeSingle();
+  const body_kg = latestWeight?.body_weight_kg ?? profile?.weight_kg ?? null;
+
   const { data, error } = await supabase
     .from("sessions")
     .insert({
       user_id: user.id,
       type,
       date,
-      duration_minutes: duration ? Number(duration) : null,
-      distance_km: distance ? Number(distance) : null,
+      duration_minutes: duration,
+      distance_km: distance,
+      running_minutes,
+      rpe,
+      surface,
+      body_kg,
       notes: notes ? String(notes) : null,
     })
     .select()

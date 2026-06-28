@@ -7,6 +7,7 @@ import {
   loadCoachContext,
 } from "@/lib/ai/context";
 import { isWeeklyPlanDoc } from "@/lib/ai/plan-schema";
+import { loadIntelligence, formatLoadForPrompt } from "@/lib/load/aggregate";
 import { addDays, format, startOfWeek } from "date-fns";
 import { revalidatePath } from "next/cache";
 
@@ -20,7 +21,8 @@ export async function generateWeeklyPlan() {
   if (!user) throw new Error("Not signed in");
 
   const ctx = await loadCoachContext(14);
-  const contextBlock = formatContextForPrompt(ctx);
+  const li = await loadIntelligence();
+  const contextBlock = `${formatContextForPrompt(ctx)}\n\nLOAD INTELLIGENCE\n${formatLoadForPrompt(li)}`;
   const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekStart = format(monday, "yyyy-MM-dd");
 

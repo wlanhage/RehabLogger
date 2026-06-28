@@ -105,3 +105,36 @@ export async function loadIntelligence(days = 60): Promise<LoadIntelligence> {
 
   return { decision, todayCheckin, recoveries, dailyTibial, acwr, tendernessSeries, bodyKg };
 }
+
+/** Compact text block for the AI coach prompt. */
+export function formatLoadForPrompt(li: LoadIntelligence): string {
+  const d = li.decision;
+  const lines: string[] = [];
+  lines.push(
+    `TODAY'S DECISION: ${d.light.toUpperCase()} — ${d.recommendation}${
+      d.tibialBudget > 0 ? `, tibial budget ${d.tibialBudget} AU` : ""
+    }`,
+  );
+  lines.push(`Engine rationale: ${d.rationale}`);
+  if (li.acwr.ratio != null) {
+    lines.push(
+      `Tibial load — acute(7d) ${Math.round(li.acwr.acute)} AU, chronic weekly ${Math.round(li.acwr.chronicWeekly)} AU, ratio ${li.acwr.ratio.toFixed(2)}.`,
+    );
+  } else {
+    lines.push("Tibial load — chronic base too low for a meaningful acute:chronic ratio (rebuild phase).");
+  }
+
+  if (li.recoveries.length) {
+    lines.push("RECOVERY RESPONSES per impact session (newest first):");
+    for (const r of li.recoveries.slice(0, 6)) {
+      lines.push(
+        `- ${r.date} ${r.type}: tibial ${r.tibial} AU → peak tenderness ${r.peakTenderness ?? "?"}/10, ` +
+          `${r.daysUntilReady != null ? `${r.daysUntilReady} days until ready` : "not yet recovered"} (${r.status}).`,
+      );
+    }
+  } else {
+    lines.push("RECOVERY RESPONSES: none yet — no impact sessions logged.");
+  }
+
+  return lines.join("\n");
+}

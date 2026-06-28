@@ -13,9 +13,23 @@ create table if not exists public.sessions (
   duration_minutes integer,
   distance_km numeric(6,2),
   notes text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Load Intelligence fields
+  rpe integer check (rpe between 1 and 10),
+  running_minutes integer,
+  surface text,
+  shoes text,
+  avg_hr integer,
+  max_hr integer,
+  calories integer,
+  pace_seconds_per_km integer,
+  body_kg numeric(5,2),
+  imported_from text not null default 'manual',
+  external_id text
 );
 create index if not exists sessions_user_date_idx on public.sessions(user_id, date desc);
+create unique index if not exists sessions_user_external_id_idx
+  on public.sessions(user_id, external_id) where external_id is not null;
 
 -- Gym sets (one row per exercise in a gym session)
 create table if not exists public.gym_sets (
@@ -116,6 +130,12 @@ create table if not exists public.daily_checkins (
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  -- Load Intelligence fields
+  shin_tenderness_left integer check (shin_tenderness_left between 0 and 10),
+  shin_tenderness_right integer check (shin_tenderness_right between 0 and 10),
+  safe_to_run text check (safe_to_run in ('yes','unsure','no')),
+  sleep_quality integer check (sleep_quality between 1 and 10),
+  body_weight_kg numeric(5,2),
   unique(user_id, date)
 );
 create index if not exists daily_checkins_user_date_idx on public.daily_checkins(user_id, date desc);
