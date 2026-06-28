@@ -36,6 +36,7 @@ export async function saveProfile(formData: FormData) {
     goals: str(formData.get("goals")),
     notes: str(formData.get("notes")),
     training_types,
+    baseline_tenderness: num(formData.get("baseline_tenderness")),
     updated_at: new Date().toISOString(),
   };
 
@@ -45,5 +46,6 @@ export async function saveProfile(formData: FormData) {
   revalidatePath("/profile");
   revalidatePath("/coach");
   revalidatePath("/add");
+  revalidatePath("/");
   return { ok: true };
 }

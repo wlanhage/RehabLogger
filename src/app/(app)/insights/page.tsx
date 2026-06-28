@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { LineChart, BarChart } from "@/components/charts";
+import { LineChart, BarChart, ComboChart } from "@/components/charts";
 import { loadIntelligence } from "@/lib/load/aggregate";
-import { format, parseISO } from "date-fns";
+import { tibialOf } from "@/lib/load/decision";
+import { GREEN_PROGRESSION } from "@/lib/load/config";
+import { format, parseISO, eachDayOfInterval, subDays } from "date-fns";
 
 const TONE = {
   green: "#10b981",
@@ -14,22 +16,47 @@ const TONE = {
 
 export default async function InsightsPage() {
   const li = await loadIntelligence(60);
-
   const tShort = (d: string) => format(parseISO(d), "d/M");
 
-  // Tenderness L/R series.
   const tenderLeft = li.tendernessSeries.map((d) => d.left);
   const tenderRight = li.tendernessSeries.map((d) => d.right);
 
-  // Daily tibial load bars (last 28 days).
-  const loadBars = li.dailyTibial.slice(-28).map((d) => ({ label: tShort(d.date), value: d.tibial }));
+  // Load-vs-symptom: aligned by date over the last 28 days.
+  const todayISO = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" });
+  const days = eachDayOfInterval({
+    start: subDays(new Date(todayISO + "T00:00:00"), 27),
+    end: new Date(todayISO + "T00:00:00"),
+  }).map((d) => format(d, "yyyy-MM-dd"));
+  const tibialByDate = new Map(li.dailyTibial.map((d) => [d.date, d.tibial]));
+  const tenderByDate = new Map(
+    li.tendernessSeries.map((d) => [d.date, Math.max(d.left ?? 0, d.right ?? 0) || (d.left == null && d.right == null ? null : 0)]),
+  );
+  const combo = days.map((d) => ({
+    label: tShort(d),
+    load: tibialByDate.get(d) ?? 0,
+    tenderness: tenderByDate.has(d) ? (tenderByDate.get(d) as number | null) : null,
+  }));
 
-  // Recovery lag per impact session (oldest → newest for reading left→right).
-  const lagBars = [...li.recoveries]
-    .reverse()
-    .map((r) => ({ label: tShort(r.date), value: r.daysUntilReady ?? 7, status: r.status }));
+  // Recovery lag, split by activity (#10).
+  const lagFor = (type: string) =>
+    [...li.recoveries]
+      .filter((r) => r.type === type)
+      .reverse()
+      .map((r) => ({ label: tShort(r.date), value: r.daysUntilReady ?? 7, status: r.status }));
+  const runLag = lagFor("running");
+  const footballLag = lagFor("football");
 
   const weight = li.weightSeries.map((d) => d.kg);
+
+  // Rebuild projection (#11) — in load terms, deliberately hedged.
+  const greenRun = li.recoveries.filter((r) => r.type === "running" && r.status === "green");
+  const bestRun = greenRun.length ? Math.max(...greenRun.map((r) => r.tibial)) : null;
+  const targetTibial = tibialOf(90, li.bodyKg, "asphalt"); // 90 min continuous ≈ half-marathon territory
+  let projection: string | null = null;
+  if (bestRun && bestRun > 0 && bestRun < targetTibial) {
+    const weeks = Math.ceil(Math.log(targetTibial / bestRun) / Math.log(1 + GREEN_PROGRESSION));
+    projection = `Vid +${Math.round(GREEN_PROGRESSION * 100)}%/vecka och grön respons är du runt 90 min sammanhängande löpning om ~${weeks} veckor (grov uppskattning, inte ett krav).`;
+  }
 
   return (
     <div className="space-y-5">
@@ -38,16 +65,8 @@ export default async function InsightsPage() {
       </Link>
       <h1 className="text-2xl font-semibold">Insikter</h1>
 
-      {/* Headline numbers */}
       <div className="grid grid-cols-2 gap-3">
-        <Stat
-          label="Bästa tolererade löpdos"
-          value={
-            li.recoveries.some((r) => r.status === "green")
-              ? `${Math.max(...li.recoveries.filter((r) => r.status === "green").map((r) => r.tibial))} AU`
-              : "—"
-          }
-        />
+        <Stat label="Bästa tolererade löpdos" value={bestRun ? `${bestRun} AU` : "—"} />
         <Stat
           label="Impact denna vecka"
           value={`${li.runsThisWeek}`}
@@ -55,7 +74,18 @@ export default async function InsightsPage() {
         />
       </div>
 
-      <Section title="Tryckömhet skenben (0–10)" hint="Vänster vs höger över tid. Divergens föregår ofta ett skov.">
+      {projection && (
+        <Card>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Uppbyggnad mot målet</p>
+          <p className="text-sm">{projection}</p>
+        </Card>
+      )}
+
+      <Section title="Load vs symptom (28 d)" hint="Tibial load (staplar) mot tryckömhet (linje). Leta efter ömhet som stiger 1–3 dagar efter en load-topp — mönstret före ett skov.">
+        <ComboChart points={combo} />
+      </Section>
+
+      <Section title="Tryckömhet skenben (0–10)" hint="Vänster vs höger. Divergens föregår ofta ett skov.">
         <LineChart
           series={[
             { label: "Vänster", color: "#3b82f6", values: tenderLeft },
@@ -66,16 +96,18 @@ export default async function InsightsPage() {
         />
       </Section>
 
-      <Section title="Recovery lag per impact-pass" hint="Dagar tills skenbenen var redo igen. Lägre = bättre. Färg = grön/gul/röd respons.">
-        <BarChart
-          bars={lagBars}
-          unit=" d"
-          colorFor={(b) => TONE[(b as { status?: keyof typeof TONE }).status ?? "ongoing"]}
-        />
+      <Section title="Recovery lag — löpning" hint="Dagar tills skenbenen var redo igen. Lägre = bättre.">
+        <BarChart bars={runLag} unit=" d" colorFor={(b) => TONE[(b as { status?: keyof typeof TONE }).status ?? "ongoing"]} />
       </Section>
 
-      <Section title="Tibial load per dag (28 d)" hint="Bensbelastningen från impact. Topparna är dina löp/fotbollspass.">
-        <BarChart bars={loadBars} unit=" AU" />
+      {footballLag.length > 0 && (
+        <Section title="Recovery lag — fotboll" hint="Fotboll är högst impact. Håll koll separat från löpningen.">
+          <BarChart bars={footballLag} unit=" d" colorFor={(b) => TONE[(b as { status?: keyof typeof TONE }).status ?? "ongoing"]} />
+        </Section>
+      )}
+
+      <Section title="Tibial load per dag (28 d)" hint="Benbelastningen från impact. Topparna är dina löp/fotbollspass.">
+        <BarChart bars={li.dailyTibial.slice(-28).map((d) => ({ label: tShort(d.date), value: d.tibial }))} unit=" AU" />
       </Section>
 
       {weight.length > 1 && (

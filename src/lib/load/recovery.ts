@@ -36,7 +36,11 @@ const ms = (d: string) => new Date(d + "T00:00:00").getTime();
 const offsetDays = (a: string, b: string) => Math.round((ms(a) - ms(b)) / dayMs);
 
 /** Median worse-side tenderness in the 3 days before an impact session. */
-function baselineBefore(checkins: CheckinPoint[], sessionDate: string): number {
+function baselineBefore(
+  checkins: CheckinPoint[],
+  sessionDate: string,
+  fallbackBaseline: number,
+): number {
   const before = checkins
     .filter((c) => {
       const o = offsetDays(sessionDate, c.date);
@@ -44,20 +48,25 @@ function baselineBefore(checkins: CheckinPoint[], sessionDate: string): number {
     })
     .map((c) => c.tendernessWorse as number)
     .sort((a, b) => a - b);
-  if (before.length === 0) return DEFAULT_BASELINE_TENDERNESS;
+  if (before.length === 0) return fallbackBaseline;
   return before[Math.floor(before.length / 2)];
 }
 
 /**
  * Derive the recovery response for one impact session purely from the daily
  * check-in series that follow it (no separate manual 24/48/72/96h form).
+ *
+ * fallbackBaseline is the user's personal resting tenderness, used when there
+ * is no pre-session check-in data (avoids treating a chronic 1–2 as "never
+ * recovered").
  */
 export function deriveRecovery(
   session: ImpactSessionPoint,
   checkins: CheckinPoint[],
+  fallbackBaseline = DEFAULT_BASELINE_TENDERNESS,
   windowDays = 6,
 ): RecoveryResponse {
-  const baseline = baselineBefore(checkins, session.date);
+  const baseline = baselineBefore(checkins, session.date, fallbackBaseline);
 
   const after = checkins
     .map((c) => ({ ...c, k: offsetDays(c.date, session.date) }))
@@ -117,10 +126,24 @@ export function deriveRecovery(
 export function deriveAllRecoveries(
   impactSessions: ImpactSessionPoint[],
   checkins: CheckinPoint[],
+  fallbackBaseline = DEFAULT_BASELINE_TENDERNESS,
 ): RecoveryResponse[] {
   return impactSessions
-    .map((s) => deriveRecovery(s, checkins))
+    .map((s) => deriveRecovery(s, checkins, fallbackBaseline))
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/**
+ * Personal resting baseline from data: a low percentile (≈25th) of worse-side
+ * morning tenderness over the window. Used when the profile doesn't specify one.
+ */
+export function computeBaseline(checkins: CheckinPoint[]): number {
+  const vals = checkins
+    .map((c) => c.tendernessWorse)
+    .filter((v): v is number => v != null)
+    .sort((a, b) => a - b);
+  if (vals.length === 0) return DEFAULT_BASELINE_TENDERNESS;
+  return vals[Math.floor(vals.length * 0.25)];
 }
 
 /** Best tibial load from a recent session that came back green (newest wins). */

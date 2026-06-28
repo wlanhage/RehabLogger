@@ -25,6 +25,7 @@ type Data = {
   height_cm: number | null;
   rehab_focus: string;
   problem_started: string;
+  baseline_tenderness: number | null;
   goals: string;
   notes: string;
   training_types: string[];
@@ -198,6 +199,17 @@ function StepRehab({ data, setData }: { data: Data; setData: (d: Data) => void }
           placeholder="e.g. March 2026, ~6 months ago"
           value={data.problem_started}
           onChange={(e) => setData({ ...data, problem_started: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="baseline_tenderness">Resting shin tenderness (0–10)</Label>
+        <Input
+          id="baseline_tenderness"
+          inputMode="numeric"
+          placeholder="your normal level on a good day — usually 0"
+          value={data.baseline_tenderness ?? ""}
+          onChange={(e) => setData({ ...data, baseline_tenderness: num(e.target.value) })}
         />
       </div>
       <div className="space-y-2">

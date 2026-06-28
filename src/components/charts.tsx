@@ -127,6 +127,61 @@ export function BarChart({
   );
 }
 
+/** Tibial-load bars with a tenderness line overlaid — the load-vs-symptom view. */
+export function ComboChart({
+  points,
+  height = 110,
+  lineMax = 10,
+}: {
+  points: { label: string; load: number; tenderness: number | null }[];
+  height?: number;
+  lineMax?: number;
+}) {
+  if (points.length === 0) return <Empty />;
+  const w = 320;
+  const loadMax = Math.max(1, ...points.map((p) => p.load));
+  const n = points.length;
+  const stepX = n > 1 ? w / (n - 1) : 0;
+  const barW = Math.max(2, (w / n) * 0.6);
+
+  const linePts = points
+    .map((p, i) => (p.tenderness == null ? null : { x: i * stepX, y: height - (p.tenderness / lineMax) * height }))
+    .filter((v): v is { x: number; y: number } => v != null);
+  const d = linePts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+  return (
+    <div className="space-y-2">
+      <svg viewBox={`0 0 ${w} ${height}`} className="w-full" preserveAspectRatio="none">
+        {points.map((p, i) => {
+          const h = (p.load / loadMax) * height;
+          return (
+            <rect
+              key={i}
+              x={i * stepX - barW / 2}
+              y={height - h}
+              width={barW}
+              height={h}
+              rx={1}
+              fill="var(--color-muted-foreground)"
+              opacity={0.35}
+            />
+          );
+        })}
+        {d && <path d={d} fill="none" stroke="#ef4444" strokeWidth={2} vectorEffect="non-scaling-stroke" />}
+      </svg>
+      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-sm bg-muted-foreground/50" /> Tibial load
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full" style={{ background: "#ef4444" }} /> Tryckömhet
+        </span>
+        <span className="ml-auto">{points[0]?.label} → {points[points.length - 1]?.label}</span>
+      </div>
+    </div>
+  );
+}
+
 function Empty() {
   return <p className="text-sm text-muted-foreground py-4 text-center">Ingen data än.</p>;
 }

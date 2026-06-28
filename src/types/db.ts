@@ -61,6 +61,8 @@ export type Profile = {
   notes: string | null;
   /** Slugs of training types the user does. */
   training_types: string[] | null;
+  /** Personal resting shin-tenderness baseline (0–10). */
+  baseline_tenderness: number | null;
   /** Set once the user finishes onboarding. */
   onboarded_at: string | null;
   updated_at: string;

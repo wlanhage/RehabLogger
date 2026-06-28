@@ -11,6 +11,7 @@ export type OnboardingData = {
   height_cm: number | null;
   rehab_focus: string;
   problem_started: string;
+  baseline_tenderness: number | null;
   goals: string;
   notes: string;
   training_types: string[];
@@ -32,6 +33,7 @@ export async function completeOnboarding(data: OnboardingData) {
     height_cm: data.height_cm,
     rehab_focus: data.rehab_focus || null,
     problem_started: data.problem_started || null,
+    baseline_tenderness: data.baseline_tenderness,
     goals: data.goals || null,
     notes: data.notes || null,
     training_types: data.training_types,

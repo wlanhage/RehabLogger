@@ -159,15 +159,18 @@ function rawDecision(input: DecisionInput): DailyDecision {
             .toISOString()
             .slice(0, 10)
         : null;
+      const ranToday = hoursSinceImpact < 20;
       return {
         light: "yellow",
         recommendation: "bike_instead",
         tibialBudget: 0,
         prescription: null,
         coldStart,
-        rationale:
-          `Gult — ${yellowReasons.join("; ")}. ` +
-          `Skenbenen behöver 48–96h efter impact${nextDate ? ` (tidigast ${nextDate})` : ""}. Cykla eller kör styrka idag.`,
+        rationale: ranToday
+          ? `Du körde impact idag — nästa löp/fotbollspass tidigast ${nextDate}. ` +
+            "Skenbenen behöver 48–96h. Vill du röra på dig idag: cykel eller styrka."
+          : `Gult — ${yellowReasons.join("; ")}. ` +
+            `Skenbenen behöver 48–96h efter impact${nextDate ? ` (tidigast ${nextDate})` : ""}. Cykla eller kör styrka idag.`,
       };
     }
     const repeatBudget = bestGreen ?? tibialOf(FIRST_RUN_TEMPLATE.running_minutes, bodyKg, FIRST_RUN_TEMPLATE.surface);
@@ -185,8 +188,16 @@ function rawDecision(input: DecisionInput): DailyDecision {
     };
   }
 
-  // ---- COLD START -----------------------------------------------------------
-  if (coldStart) {
+  // Running progression is tracked separately from football: a tolerated
+  // football dose does not license a running dose, and vice versa.
+  const runningRecoveries = recoveries.filter((r) => r.type === "running");
+  const coldStartRun = runningRecoveries.length === 0;
+  const last = runningRecoveries[0];
+  const bestGreenRun = bestTolerableTibial(runningRecoveries);
+  const runTrend = lagTrend(runningRecoveries);
+
+  // ---- RUNNING COLD START (no running history, even if football exists) ------
+  if (coldStartRun) {
     return {
       light: "green",
       recommendation: "run_allowed",
@@ -194,14 +205,12 @@ function rawDecision(input: DecisionInput): DailyDecision {
       prescription: FIRST_RUN_TEMPLATE.label,
       coldStart: true,
       rationale:
-        "Grönt och inga tidigare impact-pass att jämföra med. Starta försiktigt med run/walk-mallen. " +
+        "Grönt och inga tidigare löppass att jämföra med. Starta försiktigt med run/walk-mallen. " +
         "Logga tryckömheten varje morgon de kommande 4 dagarna — det är reaktionen efteråt som styr nästa pass.",
     };
   }
 
-  // ---- DOSE RESPONSE: the LAST impact's recovery governs progression --------
-  const last = recoveries[0];
-
+  // ---- DOSE RESPONSE: the last RUNNING recovery governs progression ---------
   if (last && last.status === "red") {
     const reduced = Math.round(last.tibial * RED_DOSE_REDUCTION * 10) / 10;
     return {
@@ -231,7 +240,7 @@ function rawDecision(input: DecisionInput): DailyDecision {
 
   // last was green. Enforce "never add frequency AND load in the same week".
   const repeatLoad =
-    bestGreen ?? tibialOf(FIRST_RUN_TEMPLATE.running_minutes, bodyKg, FIRST_RUN_TEMPLATE.surface);
+    bestGreenRun ?? tibialOf(FIRST_RUN_TEMPLATE.running_minutes, bodyKg, FIRST_RUN_TEMPLATE.surface);
 
   if (runsThisWeek >= 2) {
     return {
@@ -265,7 +274,7 @@ function rawDecision(input: DecisionInput): DailyDecision {
       light: "green",
       recommendation: "repeat_previous_run",
       tibialBudget: repeatLoad,
-      prescription: bestGreen
+      prescription: bestGreenRun
         ? `Håll samma dos som senast (tibial budget ${repeatLoad} AU) — öka inte idag.`
         : FIRST_RUN_TEMPLATE.label,
       coldStart: false,
@@ -276,18 +285,18 @@ function rawDecision(input: DecisionInput): DailyDecision {
   }
 
   const budget =
-    bestGreen != null ? Math.round(bestGreen * (1 + GREEN_PROGRESSION) * 10) / 10 : repeatLoad;
+    bestGreenRun != null ? Math.round(bestGreenRun * (1 + GREEN_PROGRESSION) * 10) / 10 : repeatLoad;
 
   return {
     light: "green",
     recommendation: "run_allowed",
     tibialBudget: budget,
-    prescription: bestGreen
-      ? `Du får öka upp till ~${Math.round(GREEN_PROGRESSION * 100)}% mot ditt bästa tolererade pass (tibial budget ${budget} AU).`
+    prescription: bestGreenRun
+      ? `Du får öka upp till ~${Math.round(GREEN_PROGRESSION * 100)}% mot ditt bästa tolererade löppass (tibial budget ${budget} AU).`
       : FIRST_RUN_TEMPLATE.label,
     coldStart: false,
     rationale:
-      `Grönt — tryckömhet låg, ${trend === "improving" ? "recovery-trenden förbättras" : "stabil recovery"} och fönstret efter förra passet är klart. ` +
+      `Grönt — tryckömhet låg, ${runTrend === "improving" ? "recovery-trenden förbättras" : "stabil recovery"} och fönstret efter förra passet är klart. ` +
       "Veckans första löppass: du får öka lite. Ökar du distansen nu, lägg inte till ett extra löppass samma vecka.",
   };
 }

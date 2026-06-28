@@ -89,6 +89,7 @@ create table if not exists public.profiles (
   goals text,
   notes text,
   training_types text[] default array['gym','cycling','walking','football'],
+  baseline_tenderness integer check (baseline_tenderness between 0 and 10),
   onboarded_at timestamptz,
   updated_at timestamptz not null default now()
 );

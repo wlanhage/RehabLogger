@@ -3,6 +3,7 @@ import { format, subDays } from "date-fns";
 import { computeSessionLoad, rollingLoad } from "./load";
 import {
   deriveAllRecoveries,
+  computeBaseline,
   type CheckinPoint,
   type ImpactSessionPoint,
   type RecoveryResponse,
@@ -43,12 +44,13 @@ export async function loadIntelligence(days = 60): Promise<LoadIntelligence> {
   const [{ data: checkins }, { data: sessions }, { data: profile }] = await Promise.all([
     supabase.from("daily_checkins").select("*").gte("date", since).order("date", { ascending: true }),
     supabase.from("sessions").select("*").gte("date", since).order("date", { ascending: true }),
-    supabase.from("profiles").select("weight_kg").maybeSingle(),
+    supabase.from("profiles").select("weight_kg, baseline_tenderness").maybeSingle(),
   ]);
 
   const checkinRows = (checkins ?? []) as DailyCheckin[];
   const sessionRows = (sessions ?? []) as Session[];
-  const profileWeight = (profile as Pick<Profile, "weight_kg"> | null)?.weight_kg ?? null;
+  const profileRow = profile as Pick<Profile, "weight_kg" | "baseline_tenderness"> | null;
+  const profileWeight = profileRow?.weight_kg ?? null;
 
   // Same-evening shin tenderness captured in the post-session follow-up seeds
   // the recovery model. Pull it and key by the session's date.
@@ -113,7 +115,10 @@ export async function loadIntelligence(days = 60): Promise<LoadIntelligence> {
     .map(([date, tibial]) => ({ date, tibial: Math.round(tibial * 10) / 10 }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const recoveries = deriveAllRecoveries(impactSessions, checkinPoints);
+  // Personal resting baseline: explicit profile value, else a low percentile
+  // of the user's own morning tenderness.
+  const personalBaseline = profileRow?.baseline_tenderness ?? computeBaseline(checkinPoints);
+  const recoveries = deriveAllRecoveries(impactSessions, checkinPoints, personalBaseline);
 
   // Last impact session + whether it has resolved.
   const lastImpact = impactSessions[impactSessions.length - 1] ?? null;

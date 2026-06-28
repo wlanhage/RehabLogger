@@ -113,6 +113,20 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="baseline_tenderness">Resting shin tenderness baseline (0–10)</Label>
+          <Input
+            id="baseline_tenderness"
+            name="baseline_tenderness"
+            inputMode="numeric"
+            placeholder="your normal level on a good day"
+            defaultValue={initial?.baseline_tenderness ?? ""}
+          />
+          <p className="text-xs text-muted-foreground">
+            Recovery is judged as a return to this level. Leave blank to auto-detect from your check-ins.
+          </p>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="goals">Goals</Label>
           <Textarea
             id="goals"

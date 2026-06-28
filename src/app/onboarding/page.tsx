@@ -27,6 +27,7 @@ export default async function OnboardingPage() {
           height_cm: initial.height_cm ?? null,
           rehab_focus: initial.rehab_focus ?? "",
           problem_started: initial.problem_started ?? "",
+          baseline_tenderness: initial.baseline_tenderness ?? null,
           goals: initial.goals ?? "",
           notes: initial.notes ?? "",
           training_types: initial.training_types ?? DEFAULT_ENABLED,
