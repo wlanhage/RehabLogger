@@ -88,6 +88,7 @@ export type DailyCheckin = {
   shin_tenderness_right: number | null;
   safe_to_run: "yes" | "unsure" | "no" | null;
   sleep_quality: number | null;
+  general_fatigue: number | null;
   body_weight_kg: number | null;
 };
 

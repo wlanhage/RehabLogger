@@ -135,6 +135,7 @@ create table if not exists public.daily_checkins (
   shin_tenderness_right integer check (shin_tenderness_right between 0 and 10),
   safe_to_run text check (safe_to_run in ('yes','unsure','no')),
   sleep_quality integer check (sleep_quality between 1 and 10),
+  general_fatigue integer check (general_fatigue between 1 and 10),
   body_weight_kg numeric(5,2),
   unique(user_id, date)
 );

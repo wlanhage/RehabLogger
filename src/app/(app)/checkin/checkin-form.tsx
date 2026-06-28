@@ -20,6 +20,7 @@ export function CheckinForm({ date, initial }: { date: string; initial: DailyChe
   const [right, setRight] = useState<number>(initial?.shin_tenderness_right ?? 0);
   const [safe, setSafe] = useState<string>(initial?.safe_to_run ?? "");
   const [sleep, setSleep] = useState<number>(initial?.sleep_quality ?? 7);
+  const [fatigue, setFatigue] = useState<number>(initial?.general_fatigue ?? 5);
   const [weight, setWeight] = useState<string>(initial?.body_weight_kg?.toString() ?? "");
   const [notes, setNotes] = useState<string>(initial?.notes ?? "");
 
@@ -30,6 +31,7 @@ export function CheckinForm({ date, initial }: { date: string; initial: DailyChe
       <input type="hidden" name="shin_right" value={right} />
       <input type="hidden" name="safe_to_run" value={safe} />
       <input type="hidden" name="sleep_quality" value={sleep} />
+      <input type="hidden" name="general_fatigue" value={fatigue} />
       <input type="hidden" name="body_weight_kg" value={weight} />
       <input type="hidden" name="notes" value={notes} />
 
@@ -73,24 +75,31 @@ export function CheckinForm({ date, initial }: { date: string; initial: DailyChe
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <Label>Sömn</Label>
-            <span className="text-sm font-medium">{sleep}/10</span>
-          </div>
-          <Slider value={[sleep]} onValueChange={([v]) => setSleep(v)} min={1} max={10} step={1} />
+      <div className="space-y-3">
+        <div className="flex justify-between">
+          <Label>Sömnkvalitet</Label>
+          <span className="text-sm font-medium">{sleep}/10</span>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="weight">Vikt (kg)</Label>
-          <Input
-            id="weight"
-            inputMode="decimal"
-            placeholder="valfritt"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-          />
+        <Slider value={[sleep]} onValueChange={([v]) => setSleep(v)} min={1} max={10} step={1} />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex justify-between">
+          <Label>Trötthet / allmän belastning</Label>
+          <span className="text-sm font-medium">{fatigue}/10</span>
         </div>
+        <Slider value={[fatigue]} onValueChange={([v]) => setFatigue(v)} min={1} max={10} step={1} />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="weight">Vikt (kg)</Label>
+        <Input
+          id="weight"
+          inputMode="decimal"
+          placeholder="valfritt"
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+        />
       </div>
 
       <div className="space-y-2">

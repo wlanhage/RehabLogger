@@ -64,6 +64,14 @@ export default async function HomePage() {
 
       <TodayDecision decision={intelligence.decision} hasCheckin={!!checkin} />
 
+      <Link
+        href="/insights"
+        className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium hover:bg-muted"
+      >
+        <span>Insikter & trender</span>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </Link>
+
       <Link href="/checkin">
         <Card className="flex items-center gap-3">
           <div

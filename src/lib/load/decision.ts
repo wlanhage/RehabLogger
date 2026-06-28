@@ -50,6 +50,8 @@ export type DecisionInput = {
   lastImpactResolved: boolean;
   /** Body weight for prescription load math. */
   bodyKg: number | null;
+  /** Impact sessions already logged in the current ISO week (Mon–today). */
+  runsThisWeek: number;
 };
 
 /** How much to cut the dose after a red recovery response. */
@@ -71,7 +73,7 @@ export function tibialOf(runningMinutes: number, bodyKg: number | null, surface:
 }
 
 export function decideToday(input: DecisionInput): DailyDecision {
-  const { today, recoveries, lastImpactDate, lastImpactResolved, bodyKg } = input;
+  const { today, recoveries, lastImpactDate, lastImpactResolved, bodyKg, runsThisWeek } = input;
   const coldStart = recoveries.length === 0;
 
   const tenderL = today?.tendernessWorse ?? null;
@@ -195,11 +197,45 @@ export function decideToday(input: DecisionInput): DailyDecision {
     };
   }
 
-  // last was green (or only green history) → allow a small progression.
+  // last was green (or only green history). During rebuild we enforce
+  // "never add frequency AND load in the same week":
+  //  - 0 runs this week  → this is the week's run; allow a small load bump.
+  //  - 1 run this week    → adding a 2nd run IS the progression (frequency).
+  //                         Hold the load at the last tolerated dose, don't bump.
+  //  - 2+ runs this week  → enough impact frequency for rebuild; hold off.
+  const repeatLoad =
+    bestGreen ?? tibialOf(FIRST_RUN_TEMPLATE.running_minutes, bodyKg, FIRST_RUN_TEMPLATE.surface);
+
+  if (runsThisWeek >= 2) {
+    return {
+      light: "yellow",
+      recommendation: "bike_instead",
+      tibialBudget: 0,
+      prescription: null,
+      coldStart: false,
+      rationale:
+        `Morgonen är grön, men du har redan kört ${runsThisWeek} impact-pass denna vecka. ` +
+        "Under uppbyggnad räcker det — lägg dagens pass på cykel eller styrka och spara ett tredje löppass till en stabil vecka framåt.",
+    };
+  }
+
+  if (runsThisWeek === 1) {
+    return {
+      light: "green",
+      recommendation: "repeat_previous_run",
+      tibialBudget: repeatLoad,
+      prescription: `Lägg till ett andra löppass denna vecka på SAMMA belastning (tibial budget ${repeatLoad} AU). Öka inte dosen.`,
+      coldStart: false,
+      rationale:
+        "Grönt och fönstret är klart. Det här blir veckans andra löppass — det är i sig en progression (frekvens). " +
+        "Öka därför inte distansen samma vecka: håll exakt samma dos som det tolererade passet.",
+    };
+  }
+
   const budget =
     bestGreen != null
       ? Math.round(bestGreen * (1 + GREEN_PROGRESSION) * 10) / 10
-      : tibialOf(FIRST_RUN_TEMPLATE.running_minutes, bodyKg, FIRST_RUN_TEMPLATE.surface);
+      : repeatLoad;
 
   return {
     light: "green",
@@ -211,6 +247,6 @@ export function decideToday(input: DecisionInput): DailyDecision {
     coldStart: false,
     rationale:
       `Grönt — tryckömhet låg, ${trend === "improving" ? "recovery-trenden förbättras" : "stabil recovery"} och fönstret efter förra passet är klart. ` +
-      "Du får springa och öka lite. Öka antingen tid eller frekvens denna vecka — inte båda.",
+      "Veckans första löppass: du får öka lite. Ökar du distansen nu, lägg inte till ett extra löppass samma vecka.",
   };
 }

@@ -32,6 +32,7 @@ export async function saveCheckin(formData: FormData) {
   const safeRaw = String(formData.get("safe_to_run") ?? "");
   const safe_to_run = ["yes", "unsure", "no"].includes(safeRaw) ? safeRaw : null;
   const sleep = numOrNull(formData.get("sleep_quality"));
+  const fatigue = numOrNull(formData.get("general_fatigue"));
   const weight = numOrNull(formData.get("body_weight_kg"));
 
   const { error } = await supabase.from("daily_checkins").upsert(
@@ -45,6 +46,7 @@ export async function saveCheckin(formData: FormData) {
       shin_tenderness_right: right,
       safe_to_run,
       sleep_quality: sleep,
+      general_fatigue: fatigue,
       body_weight_kg: weight,
       notes,
       updated_at: new Date().toISOString(),
