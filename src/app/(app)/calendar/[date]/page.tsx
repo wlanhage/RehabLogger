@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { format, parseISO, isToday, isFuture } from "date-fns";
+import { sv } from "date-fns/locale";
 import Link from "next/link";
 import { ChevronLeft, Plus, HeartPulse } from "lucide-react";
 import type { Session, GymSet, RehabFollowup, DailyCheckin } from "@/types/db";
@@ -52,12 +53,12 @@ export default async function DayPage({
   return (
     <div className="space-y-5">
       <Link href="/calendar" className="inline-flex items-center text-sm text-muted-foreground">
-        <ChevronLeft className="h-4 w-4" /> Calendar
+        <ChevronLeft className="h-4 w-4" /> Kalender
       </Link>
       <div className="flex items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold">
-          {format(dateObj, "EEEE, MMM d")}
-          {isToday(dateObj) && <span className="text-sm font-normal text-muted-foreground"> · today</span>}
+        <h1 className="text-2xl font-semibold capitalize">
+          {format(dateObj, "EEEE d MMM", { locale: sv })}
+          {isToday(dateObj) && <span className="text-sm font-normal text-muted-foreground"> · idag</span>}
         </h1>
       </div>
 
@@ -79,17 +80,16 @@ export default async function DayPage({
                   <div className="flex-1 text-sm">
                     {c ? (
                       <>
-                        <p className="font-medium">Daily check-in</p>
+                        <p className="font-medium">Dagens check-in</p>
                         <p className="text-muted-foreground">
-                          Soreness {c.soreness}/10
-                          {c.location ? ` · ${c.location}` : ""}
-                          <span className="ml-1 underline">edit</span>
+                          Ömhet {c.soreness}/10
+                          <span className="ml-1 underline">ändra</span>
                         </p>
                       </>
                     ) : (
                       <>
-                        <p className="font-medium">No check-in for this day</p>
-                        <p className="text-muted-foreground">Add one</p>
+                        <p className="font-medium">Ingen check-in den dagen</p>
+                        <p className="text-muted-foreground">Lägg till</p>
                       </>
                     )}
                   </div>
@@ -103,13 +103,13 @@ export default async function DayPage({
             className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card py-3 text-sm font-medium hover:bg-muted"
           >
             <Plus className="h-4 w-4" />
-            Log training for this day
+            Logga träning för dagen
           </Link>
         </>
       )}
 
       {(!sessions || sessions.length === 0) && (
-        <p className="text-sm text-muted-foreground">No training that day.</p>
+        <p className="text-sm text-muted-foreground">Ingen träning den dagen.</p>
       )}
 
       {(sessions ?? []).map((s: Session) => {
@@ -147,10 +147,10 @@ export default async function DayPage({
 
             {f && (
               <div className="border-t border-border pt-3 text-sm grid grid-cols-2 gap-y-1">
-                <span className="text-muted-foreground">Pain</span>
+                <span className="text-muted-foreground">Ömhet (kväll)</span>
                 <span>{f.pain_score}/10</span>
                 <span className="text-muted-foreground">RPE</span>
-                <span>{f.rpe}/10</span>
+                <span>{f.rpe ?? "–"}/10</span>
               </div>
             )}
 
@@ -160,14 +160,14 @@ export default async function DayPage({
                   href={`/add/gym?s=${s.id}`}
                   className="text-xs text-foreground underline"
                 >
-                  Continue gym session
+                  Fortsätt gympasset
                 </Link>
               ) : !f ? (
                 <Link
                   href={`/follow-up/${s.id}`}
                   className="text-xs text-foreground underline"
                 >
-                  Add follow-up
+                  Lägg till kvällsömhet
                 </Link>
               ) : (
                 <span />

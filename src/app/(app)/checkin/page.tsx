@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { CheckinForm } from "./checkin-form";
 import { format, parseISO, isValid } from "date-fns";
+import { sv } from "date-fns/locale";
 import type { DailyCheckin } from "@/types/db";
 
 function safeDate(d?: string): string {
@@ -27,9 +28,9 @@ export default async function CheckinPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Daily check-in</h1>
-        <p className="text-sm text-muted-foreground">
-          {format(parseISO(date), "EEEE, MMM d")} — how do your legs feel today?
+        <h1 className="text-2xl font-semibold">Daglig check-in</h1>
+        <p className="text-sm text-muted-foreground capitalize">
+          {format(parseISO(date), "EEEE d MMM", { locale: sv })} — hur känns kroppen idag?
         </p>
       </header>
       <CheckinForm date={date} initial={(data as DailyCheckin | null) ?? null} />

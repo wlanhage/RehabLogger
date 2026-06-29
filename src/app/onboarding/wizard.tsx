@@ -38,9 +38,9 @@ export function OnboardingWizard({ initial }: { initial: Data }) {
   const [pending, start] = useTransition();
 
   const steps = [
-    { title: "About you", render: () => <StepProfile data={data} setData={setData} /> },
-    { title: "What are you rehabbing?", render: () => <StepRehab data={data} setData={setData} /> },
-    { title: "What do you train?", render: () => <StepActivities data={data} setData={setData} /> },
+    { title: "Om dig", render: () => <StepProfile data={data} setData={setData} /> },
+    { title: "Vad rehabbar du?", render: () => <StepRehab data={data} setData={setData} /> },
+    { title: "Vad tränar du?", render: () => <StepActivities data={data} setData={setData} /> },
   ];
   const total = steps.length;
   const current = steps[step];
@@ -62,7 +62,7 @@ export function OnboardingWizard({ initial }: { initial: Data }) {
       <div className="flex flex-col items-center gap-2">
         <Logo size={64} priority />
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Step {step + 1} of {total}
+          Steg {step + 1} av {total}
         </p>
       </div>
 
@@ -93,16 +93,16 @@ export function OnboardingWizard({ initial }: { initial: Data }) {
             disabled={pending}
           >
             <ChevronLeft className="h-5 w-5" />
-            Back
+            Tillbaka
           </Button>
         )}
         {!isLast ? (
           <Button className="flex-1" size="lg" onClick={() => setStep((s) => s + 1)}>
-            Next
+            Nästa
           </Button>
         ) : (
           <Button className="flex-1" size="lg" onClick={finish} disabled={pending}>
-            {pending ? "Saving…" : "Finish"}
+            {pending ? "Sparar…" : "Klar"}
           </Button>
         )}
       </div>
@@ -120,10 +120,10 @@ function StepProfile({ data, setData }: { data: Data; setData: (d: Data) => void
   return (
     <>
       <p className="text-sm text-muted-foreground">
-        Just the basics. Used to personalise plans and chat with the AI coach.
+        Bara grunderna. Används för att skräddarsy planer och chatt med AI-coachen.
       </p>
       <div className="space-y-2">
-        <Label htmlFor="display_name">Name</Label>
+        <Label htmlFor="display_name">Namn</Label>
         <Input
           id="display_name"
           value={data.display_name}
@@ -132,18 +132,18 @@ function StepProfile({ data, setData }: { data: Data; setData: (d: Data) => void
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label>Sex</Label>
+          <Label>Kön</Label>
           <Select value={data.sex} onValueChange={(v) => setData({ ...data, sex: v })}>
-            <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Välj…" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="male">Male</SelectItem>
-              <SelectItem value="female">Female</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
+              <SelectItem value="male">Man</SelectItem>
+              <SelectItem value="female">Kvinna</SelectItem>
+              <SelectItem value="other">Annat</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="age">Age</Label>
+          <Label htmlFor="age">Ålder</Label>
           <Input
             id="age"
             inputMode="numeric"
@@ -154,7 +154,7 @@ function StepProfile({ data, setData }: { data: Data; setData: (d: Data) => void
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label htmlFor="weight">Weight (kg)</Label>
+          <Label htmlFor="weight">Vikt (kg)</Label>
           <Input
             id="weight"
             inputMode="decimal"
@@ -163,7 +163,7 @@ function StepProfile({ data, setData }: { data: Data; setData: (d: Data) => void
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="height">Height (cm)</Label>
+          <Label htmlFor="height">Längd (cm)</Label>
           <Input
             id="height"
             inputMode="numeric"
@@ -180,54 +180,54 @@ function StepRehab({ data, setData }: { data: Data; setData: (d: Data) => void }
   return (
     <>
       <p className="text-sm text-muted-foreground">
-        If you&apos;re rehabbing an injury or working around an issue, tell the coach about it. Leave blank if you&apos;re just tracking general training.
+        Rehabbar du en skada eller jobbar runt ett besvär? Berätta för coachen. Lämna tomt om du bara följer din träning generellt.
       </p>
       <div className="space-y-2">
-        <Label htmlFor="rehab_focus">Current focus / injury</Label>
+        <Label htmlFor="rehab_focus">Nuvarande fokus / skada</Label>
         <Textarea
           id="rehab_focus"
           rows={3}
-          placeholder="e.g. Shin splints both legs, worse on the left. Or: Achilles tendinopathy. Or: returning from a knee surgery."
+          placeholder="t.ex. benhinneinflammation båda benen, värst vänster. Eller: hälseneinflammation. Eller: tillbaka efter knäoperation."
           value={data.rehab_focus}
           onChange={(e) => setData({ ...data, rehab_focus: e.target.value })}
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="problem_started">When did it start?</Label>
+        <Label htmlFor="problem_started">När började det?</Label>
         <Input
           id="problem_started"
-          placeholder="e.g. March 2026, ~6 months ago"
+          placeholder="t.ex. mars 2026, ~6 månader sedan"
           value={data.problem_started}
           onChange={(e) => setData({ ...data, problem_started: e.target.value })}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="baseline_tenderness">Resting shin tenderness (0–10)</Label>
+        <Label htmlFor="baseline_tenderness">Vilo-tryckömhet i skenbenen (0–10)</Label>
         <Input
           id="baseline_tenderness"
           inputMode="numeric"
-          placeholder="your normal level on a good day — usually 0"
+          placeholder="din normalnivå en bra dag — oftast 0"
           value={data.baseline_tenderness ?? ""}
           onChange={(e) => setData({ ...data, baseline_tenderness: num(e.target.value) })}
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="goals">Goals</Label>
+        <Label htmlFor="goals">Mål</Label>
         <Textarea
           id="goals"
           rows={2}
-          placeholder="e.g. Return to 4×/week running, play football pain-free, half marathon in 8 months."
+          placeholder="t.ex. tillbaka till löpning 4×/vecka, spela fotboll smärtfritt, halvmara om 8 månader."
           value={data.goals}
           onChange={(e) => setData({ ...data, goals: e.target.value })}
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="notes">Anything else?</Label>
+        <Label htmlFor="notes">Något annat?</Label>
         <Textarea
           id="notes"
           rows={3}
-          placeholder="Past injuries, sleep, time constraints, gym access, etc."
+          placeholder="Tidigare skador, sömn, tidsbrist, gymtillgång, etc."
           value={data.notes}
           onChange={(e) => setData({ ...data, notes: e.target.value })}
         />
@@ -247,7 +247,7 @@ function StepActivities({ data, setData }: { data: Data; setData: (d: Data) => v
   return (
     <>
       <p className="text-sm text-muted-foreground">
-        Tick the activities you train. Only these will show up when logging training. You can change this any time on your Profile.
+        Bocka i aktiviteterna du tränar. Bara dessa visas när du loggar träning. Du kan ändra det när som helst på Profil.
       </p>
       <div className="grid grid-cols-2 gap-2">
         {TRAINING_TYPES.map(({ slug, label, icon: Icon }) => {
@@ -272,7 +272,7 @@ function StepActivities({ data, setData }: { data: Data; setData: (d: Data) => v
         })}
       </div>
       {data.training_types.length === 0 && (
-        <p className="text-xs text-muted-foreground">Pick at least one to continue.</p>
+        <p className="text-xs text-muted-foreground">Välj minst en för att fortsätta.</p>
       )}
     </>
   );

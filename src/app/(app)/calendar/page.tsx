@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, startOfWeek, endOfWeek, isSameMonth, isToday } from "date-fns";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { sv } from "date-fns/locale";
 import { sorenessTone } from "@/lib/checkin-ui";
 import { iconFor } from "@/lib/training-types";
 
@@ -49,12 +50,12 @@ export default async function CalendarPage({
     <div className="space-y-5">
       <header className="flex items-center justify-between">
         <Link href={`/calendar?m=${prevMonth}`} className="px-3 py-1 text-sm text-muted-foreground">‹</Link>
-        <h1 className="text-xl font-semibold">{format(cursor, "MMMM yyyy")}</h1>
+        <h1 className="text-xl font-semibold capitalize">{format(cursor, "MMMM yyyy", { locale: sv })}</h1>
         <Link href={`/calendar?m=${nextMonth}`} className="px-3 py-1 text-sm text-muted-foreground">›</Link>
       </header>
 
       <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
-        {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d) => <div key={d}>{d}</div>)}
+        {["Mån","Tis","Ons","Tor","Fre","Lör","Sön"].map((d) => <div key={d}>{d}</div>)}
       </div>
 
       <div className="grid grid-cols-7 gap-1">

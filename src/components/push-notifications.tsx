@@ -43,7 +43,7 @@ export function PushNotifications() {
   async function refresh() {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setState({ kind: "unsupported", reason: "Your browser doesn't support push notifications." });
+      setState({ kind: "unsupported", reason: "Din webbläsare stödjer inte push-notiser." });
       return;
     }
     // iOS Safari requires the app to be added to the Home Screen first.
@@ -63,7 +63,7 @@ export function PushNotifications() {
   async function enable() {
     setError(null);
     if (!vapidKey) {
-      setError("VAPID public key missing — server-side config issue.");
+      setError("VAPID-nyckel saknas — serverkonfigurationsfel.");
       return;
     }
     start(async () => {
@@ -88,11 +88,11 @@ export function PushNotifications() {
         });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
-          throw new Error(j.error ?? "Subscribe failed");
+          throw new Error(j.error ?? "Prenumeration misslyckades");
         }
         setState({ kind: "on" });
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to enable notifications");
+        setError(e instanceof Error ? e.message : "Kunde inte slå på notiser");
       }
     });
   }
@@ -113,13 +113,13 @@ export function PushNotifications() {
         }
         setState({ kind: "off" });
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to disable");
+        setError(e instanceof Error ? e.message : "Kunde inte stänga av");
       }
     });
   }
 
   if (state.kind === "loading") {
-    return <p className="text-sm text-muted-foreground">Checking notification status…</p>;
+    return <p className="text-sm text-muted-foreground">Kontrollerar notis-status…</p>;
   }
 
   if (state.kind === "unsupported") {
@@ -131,11 +131,11 @@ export function PushNotifications() {
       <div className="space-y-2 text-sm">
         <div className="flex items-center gap-2 font-medium">
           <Smartphone className="h-4 w-4" />
-          Add to Home Screen first
+          Lägg till på hemskärmen först
         </div>
         <p className="text-muted-foreground">
-          iOS only allows push notifications for installed web apps. In Safari, tap{" "}
-          <strong>Share → Add to Home Screen</strong>, open the app from the icon, and come back here.
+          iOS tillåter bara push-notiser för installerade webbappar. I Safari, tryck{" "}
+          <strong>Dela → Lägg till på hemskärmen</strong>, öppna appen från ikonen och kom tillbaka hit.
         </p>
       </div>
     );
@@ -144,7 +144,7 @@ export function PushNotifications() {
   if (state.kind === "denied") {
     return (
       <p className="text-sm text-muted-foreground">
-        Notifications are blocked for this site. Allow them in your browser settings, then reload.
+        Notiser är blockerade för den här sidan. Tillåt dem i webbläsarinställningarna och ladda om.
       </p>
     );
   }
@@ -156,27 +156,27 @@ export function PushNotifications() {
           {state.kind === "on" ? (
             <>
               <Bell className="h-4 w-4" />
-              <span className="font-medium">Notifications are on</span>
+              <span className="font-medium">Notiser är på</span>
             </>
           ) : (
             <>
               <BellOff className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Notifications are off</span>
+              <span className="text-muted-foreground">Notiser är av</span>
             </>
           )}
         </div>
         {state.kind === "on" ? (
           <Button size="sm" variant="outline" onClick={disable} disabled={pending}>
-            Turn off
+            Stäng av
           </Button>
         ) : (
           <Button size="sm" onClick={enable} disabled={pending}>
-            Turn on
+            Slå på
           </Button>
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        Daily reminders at 09:00 and 21:00 if you haven&apos;t logged your check-in.
+        Dagliga påminnelser 09:00 och 21:00 om du inte loggat din check-in.
       </p>
       {error && <p className="text-sm text-red-500">{error}</p>}
     </div>

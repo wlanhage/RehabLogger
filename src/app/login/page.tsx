@@ -8,7 +8,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-3">
           <Logo size={96} priority />
           <h1 className="text-2xl font-semibold">Rehab Logger</h1>
-          <p className="text-sm text-muted-foreground -mt-1">Sign in to continue</p>
+          <p className="text-sm text-muted-foreground -mt-1">Logga in för att fortsätta</p>
         </div>
         <LoginForm />
       </div>

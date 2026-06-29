@@ -150,7 +150,7 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground whitespace-nowrap">
-          Exercise {index + 1}/{total}
+          Övning {index + 1}/{total}
         </span>
         <div className="flex-1 mx-3 h-1 bg-muted rounded-full overflow-hidden">
           <div
@@ -164,14 +164,14 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
         <h1 className="text-2xl font-semibold">{current.exercise}</h1>
         {current.skipped && (
           <span className="text-xs uppercase tracking-wide text-muted-foreground">
-            Skipped
+            Hoppad
           </span>
         )}
       </div>
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label>Sets × reps</Label>
+          <Label>Set × reps</Label>
           <Select value={current.set_format} onValueChange={(v) => update({ set_format: v })}>
             <SelectTrigger>
               <SelectValue />
@@ -203,7 +203,7 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
         </div>
 
         <div className="space-y-2">
-          <Label>Weight (kg)</Label>
+          <Label>Vikt (kg)</Label>
           <Input
             type="text"
             inputMode="decimal"
@@ -215,7 +215,7 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
         </div>
 
         <div className="space-y-2">
-          <Label>Notes</Label>
+          <Label>Kommentar</Label>
           <Textarea
             value={current.notes}
             onChange={(e) => update({ notes: e.target.value })}
@@ -237,12 +237,12 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
           </Button>
           {index < total - 1 ? (
             <Button className="flex-1" size="lg" onClick={() => goTo(index + 1)}>
-              Next
+              Nästa
               <ChevronRight className="h-5 w-5" />
             </Button>
           ) : (
             <Button className="flex-1" size="lg" onClick={finish}>
-              Finish workout
+              Avsluta passet
             </Button>
           )}
         </div>
@@ -253,7 +253,7 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
           onClick={skip}
         >
           <SkipForward className="h-4 w-4" />
-          Skip this exercise
+          Hoppa över övningen
         </Button>
       </div>
     </div>

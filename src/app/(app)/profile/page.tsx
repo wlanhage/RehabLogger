@@ -13,23 +13,23 @@ export default async function ProfilePage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Profile</h1>
+        <h1 className="text-2xl font-semibold">Profil</h1>
         <p className="text-sm text-muted-foreground">
-          The context your AI coach reads on every request. Be specific.
+          Kontexten din AI-coach läser vid varje förfrågan. Var specifik.
         </p>
       </header>
 
       <ProfileForm initial={(data as Profile | null) ?? null} />
 
       <section className="space-y-3 pt-2">
-        <h2 className="text-lg font-semibold">Notifications</h2>
+        <h2 className="text-lg font-semibold">Notiser</h2>
         <Card>
           <PushNotifications />
         </Card>
       </section>
 
       <section className="space-y-3 pt-2">
-        <h2 className="text-lg font-semibold">Export data</h2>
+        <h2 className="text-lg font-semibold">Exportera data</h2>
         <Card>
           <ExportSection />
         </Card>
@@ -38,7 +38,7 @@ export default async function ProfilePage() {
       <section className="pt-2">
         <form action={signOut}>
           <button className="w-full text-sm text-muted-foreground py-3 rounded-lg border border-border">
-            Sign out
+            Logga ut
           </button>
         </form>
       </section>

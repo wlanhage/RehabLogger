@@ -54,104 +54,104 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      <Section title="Personal">
+      <Section title="Personligt">
         <div className="space-y-2">
-          <Label htmlFor="display_name">Name</Label>
+          <Label htmlFor="display_name">Namn</Label>
           <Input id="display_name" name="display_name" defaultValue={initial?.display_name ?? ""} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>Sex</Label>
+            <Label>Kön</Label>
             <Select value={sex} onValueChange={setSex}>
-              <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Välj…" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                <SelectItem value="male">Man</SelectItem>
+                <SelectItem value="female">Kvinna</SelectItem>
+                <SelectItem value="other">Annat</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="age">Age</Label>
+            <Label htmlFor="age">Ålder</Label>
             <Input id="age" name="age" inputMode="numeric" defaultValue={initial?.age ?? ""} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="weight_kg">Weight (kg)</Label>
+            <Label htmlFor="weight_kg">Vikt (kg)</Label>
             <Input id="weight_kg" name="weight_kg" inputMode="decimal" defaultValue={initial?.weight_kg ?? ""} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="height_cm">Height (cm)</Label>
+            <Label htmlFor="height_cm">Längd (cm)</Label>
             <Input id="height_cm" name="height_cm" inputMode="numeric" defaultValue={initial?.height_cm ?? ""} />
           </div>
         </div>
       </Section>
 
-      <Section title="Rehab focus & goals">
+      <Section title="Rehab-fokus & mål">
         <div className="space-y-2">
-          <Label htmlFor="rehab_focus">Current rehab focus / injury</Label>
+          <Label htmlFor="rehab_focus">Nuvarande rehab-fokus / skada</Label>
           <Textarea
             id="rehab_focus"
             name="rehab_focus"
             rows={3}
-            placeholder="What body part / issue are you rehabbing? Leave blank if you're just tracking general training."
+            placeholder="Vilken kroppsdel / vilket besvär rehabbar du? Lämna tomt om du bara följer din träning generellt."
             defaultValue={initial?.rehab_focus ?? ""}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="problem_started">When did it start?</Label>
+          <Label htmlFor="problem_started">När började det?</Label>
           <Input
             id="problem_started"
             name="problem_started"
-            placeholder="e.g. March 2026, ~6 months ago"
+            placeholder="t.ex. mars 2026, ~6 månader sedan"
             defaultValue={initial?.problem_started ?? ""}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="baseline_tenderness">Resting shin tenderness baseline (0–10)</Label>
+          <Label htmlFor="baseline_tenderness">Vilo-tryckömhet i skenbenen (0–10)</Label>
           <Input
             id="baseline_tenderness"
             name="baseline_tenderness"
             inputMode="numeric"
-            placeholder="your normal level on a good day"
+            placeholder="din normalnivå en bra dag"
             defaultValue={initial?.baseline_tenderness ?? ""}
           />
           <p className="text-xs text-muted-foreground">
-            Recovery is judged as a return to this level. Leave blank to auto-detect from your check-ins.
+            Återhämtning bedöms som en återgång till den här nivån. Lämna tomt för att läsa av automatiskt från dina check-ins.
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="goals">Goals</Label>
+          <Label htmlFor="goals">Mål</Label>
           <Textarea
             id="goals"
             name="goals"
             rows={2}
-            placeholder="e.g. Return to 4×/week running, play football pain-free, half marathon in 8 months."
+            placeholder="t.ex. tillbaka till löpning 4×/vecka, spela fotboll smärtfritt, halvmara om 8 månader."
             defaultValue={initial?.goals ?? ""}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="notes">Notes for the coach</Label>
+          <Label htmlFor="notes">Noteringar till coachen</Label>
           <Textarea
             id="notes"
             name="notes"
             rows={3}
-            placeholder="Past injuries, sleep, time constraints, gym access, etc."
+            placeholder="Tidigare skador, sömn, tidsbrist, gymtillgång, etc."
             defaultValue={initial?.notes ?? ""}
           />
         </div>
       </Section>
 
-      <Section title="Activities I do">
+      <Section title="Aktiviteter jag kör">
         <p className="text-sm text-muted-foreground">
-          Tick the activities you train. Only these will show up when logging training.
+          Bocka i aktiviteterna du tränar. Bara dessa visas när du loggar träning.
         </p>
         <div className="grid grid-cols-2 gap-2">
           {TRAINING_TYPES.map(({ slug, label, icon: Icon }) => {
@@ -178,10 +178,10 @@ export function ProfileForm({ initial }: { initial: Profile | null }) {
       </Section>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
-      {saved && <p className="text-sm text-muted-foreground">Saved.</p>}
+      {saved && <p className="text-sm text-muted-foreground">Sparat.</p>}
 
       <Button type="submit" disabled={pending} className="w-full" size="lg">
-        {pending ? "Saving…" : "Save profile"}
+        {pending ? "Sparar…" : "Spara profil"}
       </Button>
     </form>
   );

@@ -51,7 +51,7 @@ export function ChatWindow({ initial }: { initial: ChatMessage[] }) {
   }
 
   async function onClear() {
-    if (!confirm("Clear all chat history?")) return;
+    if (!confirm("Rensa hela chatthistoriken?")) return;
     await clearChat();
     setMessages([]);
   }
@@ -61,7 +61,7 @@ export function ChatWindow({ initial }: { initial: ChatMessage[] }) {
       <div className="space-y-2 min-h-[40vh] max-h-[55vh] overflow-y-auto pr-1">
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            Ask anything — pain after a session, whether to push or back off, exercise swaps, etc. The coach reads your profile and recent sessions.
+            Fråga vad som helst — ömhet efter ett pass, om du ska pusha eller backa, övningsbyten, etc. Coachen läser din profil och dina senaste pass.
           </p>
         )}
         {messages.map((m, i) => (
@@ -93,16 +93,16 @@ export function ChatWindow({ initial }: { initial: ChatMessage[] }) {
               send();
             }
           }}
-          placeholder="Ask the coach…"
+          placeholder="Fråga coachen…"
           rows={2}
         />
         <div className="flex gap-2">
           <Button onClick={send} disabled={pending || !text.trim()} className="flex-1" size="lg">
-            {pending ? "Thinking…" : "Send"}
+            {pending ? "Tänker…" : "Skicka"}
           </Button>
           {messages.length > 0 && (
             <Button variant="outline" onClick={onClear} size="lg">
-              Clear
+              Rensa
             </Button>
           )}
         </div>

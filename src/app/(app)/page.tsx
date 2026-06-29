@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { format, startOfWeek, endOfWeek } from "date-fns";
+import { sv } from "date-fns/locale";
 import Link from "next/link";
 import { HeartPulse, ChevronRight } from "lucide-react";
 import type { Session, DailyCheckin, Profile } from "@/types/db";
@@ -66,8 +67,8 @@ export default async function HomePage() {
         <div className="flex items-center gap-3">
           <Logo size={40} />
           <div>
-            <p className="text-sm text-muted-foreground leading-none">{format(today, "EEEE")}</p>
-            <h1 className="text-2xl font-semibold leading-tight">{format(today, "MMMM d")}</h1>
+            <p className="text-sm text-muted-foreground leading-none capitalize">{format(today, "EEEE", { locale: sv })}</p>
+            <h1 className="text-2xl font-semibold leading-tight capitalize">{format(today, "d MMMM", { locale: sv })}</h1>
           </div>
         </div>
       </header>
@@ -119,26 +120,26 @@ export default async function HomePage() {
       </Link>
 
       <Card>
-        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Latest activity</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Senaste aktivitet</p>
         {latest ? (
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{labelFor(latest.type)}</p>
-              <p className="text-sm text-muted-foreground">{format(new Date(latest.date), "MMM d")}</p>
+              <p className="text-sm text-muted-foreground">{format(new Date(latest.date), "d MMM")}</p>
             </div>
             {(() => { const I = iconFor(latest.type); return <I className="h-6 w-6" />; })()}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No activity yet.</p>
+          <p className="text-sm text-muted-foreground">Ingen aktivitet än.</p>
         )}
       </Card>
 
       <section>
-        <h2 className="text-sm font-medium text-muted-foreground mb-2">This week</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-2">Denna vecka</h2>
         {Object.keys(counts).length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No activities configured. Pick some on{" "}
-            <Link href="/profile" className="underline">Profile</Link>.
+            Inga aktiviteter valda. Välj några på{" "}
+            <Link href="/profile" className="underline">Profil</Link>.
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
@@ -159,10 +160,10 @@ export default async function HomePage() {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-muted-foreground mb-2">Recent</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-2">Senaste passen</h2>
         <div className="space-y-2">
           {(recent ?? []).length === 0 && (
-            <p className="text-sm text-muted-foreground">Nothing yet.</p>
+            <p className="text-sm text-muted-foreground">Inget än.</p>
           )}
           {(recent ?? []).map((s: Session) => {
             const Icon = iconFor(s.type);
@@ -173,7 +174,7 @@ export default async function HomePage() {
                     <Icon className="h-5 w-5" />
                     <div>
                       <p className="font-medium">{labelFor(s.type)}</p>
-                      <p className="text-xs text-muted-foreground">{format(new Date(s.date), "EEE, MMM d")}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{format(new Date(s.date), "EEE d MMM", { locale: sv })}</p>
                     </div>
                   </div>
                   {s.duration_minutes && (

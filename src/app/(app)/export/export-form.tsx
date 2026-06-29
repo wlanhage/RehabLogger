@@ -13,7 +13,7 @@ import {
 import { fetchExportRows, type ExportRange, type ExportRow } from "./actions";
 
 const COLUMNS: (keyof ExportRow)[] = [
-  "date","training_type","exercise","sets","reps","weight","duration","pain_score","rpe","daily_soreness","notes",
+  "date","training_type","exercise","sets","reps","weight","duration","tibial_load","pain_score","rpe","daily_soreness","notes",
 ];
 
 function toCSV(rows: ExportRow[]) {
@@ -65,21 +65,21 @@ export function ExportForm() {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <Label>Range</Label>
+        <Label>Period</Label>
         <Select value={range} onValueChange={(v) => setRange(v as ExportRange)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="day">Day</SelectItem>
-            <SelectItem value="week">Week</SelectItem>
-            <SelectItem value="month">Month</SelectItem>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="day">Dag</SelectItem>
+            <SelectItem value="week">Vecka</SelectItem>
+            <SelectItem value="month">Månad</SelectItem>
+            <SelectItem value="all">Allt</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {range !== "all" && (
         <div className="space-y-2">
-          <Label>Anchor date</Label>
+          <Label>Datum</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
       )}

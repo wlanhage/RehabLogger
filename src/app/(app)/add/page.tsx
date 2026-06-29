@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { ChevronLeft } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
+import { sv } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/server";
 import { getType, DEFAULT_ENABLED } from "@/lib/training-types";
 
@@ -37,20 +38,20 @@ export default async function AddPage({
       <div className="space-y-2">
         {date && (
           <Link href={`/calendar/${date}`} className="inline-flex items-center text-sm text-muted-foreground">
-            <ChevronLeft className="h-4 w-4" /> Back
+            <ChevronLeft className="h-4 w-4" /> Tillbaka
           </Link>
         )}
-        <h1 className="text-2xl font-semibold">Register training</h1>
-        <p className="text-sm text-muted-foreground">
-          {date ? `Logging for ${format(parseISO(date), "EEEE, MMM d")}` : "Logging for today"}
+        <h1 className="text-2xl font-semibold">Logga träning</h1>
+        <p className="text-sm text-muted-foreground capitalize">
+          {date ? format(parseISO(date), "EEEE d MMM", { locale: sv }) : "Idag"}
         </p>
       </div>
 
       {options.length === 0 ? (
         <Card>
           <p className="text-sm">
-            You haven&apos;t picked any activities yet. Head to{" "}
-            <Link href="/profile" className="underline">Profile</Link> and choose what you train.
+            Du har inte valt några aktiviteter än. Gå till{" "}
+            <Link href="/profile" className="underline">Profil</Link> och välj vad du tränar.
           </p>
         </Card>
       ) : (

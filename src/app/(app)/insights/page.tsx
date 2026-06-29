@@ -18,8 +18,10 @@ export default async function InsightsPage() {
   const li = await loadIntelligence(60);
   const tShort = (d: string) => format(parseISO(d), "d/M");
 
+  const tenderDates = li.tendernessSeries.map((d) => tShort(d.date));
   const tenderLeft = li.tendernessSeries.map((d) => d.left);
   const tenderRight = li.tendernessSeries.map((d) => d.right);
+  const hasTenderness = li.tendernessSeries.some((d) => d.left != null || d.right != null);
 
   // Load-vs-symptom: aligned by date over the last 28 days.
   const todayISO = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" });
@@ -28,16 +30,19 @@ export default async function InsightsPage() {
     end: new Date(todayISO + "T00:00:00"),
   }).map((d) => format(d, "yyyy-MM-dd"));
   const tibialByDate = new Map(li.dailyTibial.map((d) => [d.date, d.tibial]));
-  const tenderByDate = new Map(
-    li.tendernessSeries.map((d) => [d.date, Math.max(d.left ?? 0, d.right ?? 0) || (d.left == null && d.right == null ? null : 0)]),
+  const tenderByDate = new Map<string, number | null>(
+    li.tendernessSeries.map((d) => [
+      d.date,
+      d.left == null && d.right == null ? null : Math.max(d.left ?? 0, d.right ?? 0),
+    ]),
   );
   const combo = days.map((d) => ({
     label: tShort(d),
     load: tibialByDate.get(d) ?? 0,
     tenderness: tenderByDate.has(d) ? (tenderByDate.get(d) as number | null) : null,
   }));
+  const hasLoad = li.dailyTibial.some((d) => d.tibial > 0);
 
-  // Recovery lag, split by activity (#10).
   const lagFor = (type: string) =>
     [...li.recoveries]
       .filter((r) => r.type === type)
@@ -47,11 +52,11 @@ export default async function InsightsPage() {
   const footballLag = lagFor("football");
 
   const weight = li.weightSeries.map((d) => d.kg);
+  const weightDates = li.weightSeries.map((d) => tShort(d.date));
 
-  // Rebuild projection (#11) — in load terms, deliberately hedged.
   const greenRun = li.recoveries.filter((r) => r.type === "running" && r.status === "green");
   const bestRun = greenRun.length ? Math.max(...greenRun.map((r) => r.tibial)) : null;
-  const targetTibial = tibialOf(90, li.bodyKg, "asphalt"); // 90 min continuous ≈ half-marathon territory
+  const targetTibial = tibialOf(90, li.bodyKg, "asphalt");
   let projection: string | null = null;
   if (bestRun && bestRun > 0 && bestRun < targetTibial) {
     const weeks = Math.ceil(Math.log(targetTibial / bestRun) / Math.log(1 + GREEN_PROGRESSION));
@@ -82,22 +87,35 @@ export default async function InsightsPage() {
       )}
 
       <Section title="Load vs symptom (28 d)" hint="Tibial load (staplar) mot tryckömhet (linje). Leta efter ömhet som stiger 1–3 dagar efter en load-topp — mönstret före ett skov.">
-        <ComboChart points={combo} />
+        {hasLoad || hasTenderness ? (
+          <ComboChart points={combo} />
+        ) : (
+          <Locked text="Logga ett löp-/fotbollspass och dina morgon-check-ins, så ritas load och ömhet här sida vid sida." />
+        )}
       </Section>
 
       <Section title="Tryckömhet skenben (0–10)" hint="Vänster vs höger. Divergens föregår ofta ett skov.">
-        <LineChart
-          series={[
-            { label: "Vänster", color: "#3b82f6", values: tenderLeft },
-            { label: "Höger", color: "#f97316", values: tenderRight },
-          ]}
-          min={0}
-          max={10}
-        />
+        {hasTenderness ? (
+          <LineChart
+            labels={tenderDates}
+            series={[
+              { label: "Vänster", color: "#3b82f6", values: tenderLeft },
+              { label: "Höger", color: "#f97316", values: tenderRight },
+            ]}
+            min={0}
+            max={10}
+          />
+        ) : (
+          <Locked text="Gör några morgon-check-ins, så ser du ömhetstrenden för vänster och höger ben." />
+        )}
       </Section>
 
-      <Section title="Recovery lag — löpning" hint="Dagar tills skenbenen var redo igen. Lägre = bättre.">
-        <BarChart bars={runLag} unit=" d" colorFor={(b) => TONE[(b as { status?: keyof typeof TONE }).status ?? "ongoing"]} />
+      <Section title="Recovery lag — löpning" hint="Dagar tills skenbenen var redo igen efter ett löppass. Lägre = bättre. Färg = grön/gul/röd respons.">
+        {runLag.length ? (
+          <BarChart bars={runLag} unit=" d" colorFor={(b) => TONE[(b as { status?: keyof typeof TONE }).status ?? "ongoing"]} />
+        ) : (
+          <Locked text="Logga ett löppass och check-ins dagarna efter, så beräknas hur många dagar återhämtningen tog." />
+        )}
       </Section>
 
       {footballLag.length > 0 && (
@@ -106,15 +124,21 @@ export default async function InsightsPage() {
         </Section>
       )}
 
-      <Section title="Tibial load per dag (28 d)" hint="Benbelastningen från impact. Topparna är dina löp/fotbollspass.">
-        <BarChart bars={li.dailyTibial.slice(-28).map((d) => ({ label: tShort(d.date), value: d.tibial }))} unit=" AU" />
+      <Section title="Tibial load per dag (28 d)" hint="Benbelastningen från impact. Topparna är dina löp-/fotbollspass.">
+        {hasLoad ? (
+          <BarChart bars={li.dailyTibial.slice(-28).map((d) => ({ label: tShort(d.date), value: d.tibial }))} unit=" AU" />
+        ) : (
+          <Locked text="Inga impact-pass loggade än — den här fylls i när du börjat springa." />
+        )}
       </Section>
 
-      {weight.length > 1 && (
-        <Section title="Vikt (kg)" hint="Lägre kroppsmassa = lägre tibial load per km.">
-          <LineChart series={[{ label: "Vikt", color: "#10b981", values: weight }]} />
-        </Section>
-      )}
+      <Section title="Vikt (kg)" hint="Lägre kroppsmassa = lägre tibial load per km.">
+        {weight.length > 1 ? (
+          <LineChart labels={weightDates} series={[{ label: "Vikt", color: "#10b981", values: weight }]} unit="" />
+        ) : (
+          <Locked text="Fyll i vikt i check-in då och då, så ser du trenden här." />
+        )}
+      </Section>
 
       <p className="text-xs text-muted-foreground">
         Acute:chronic-kvoten visas medvetet inte under uppbyggnad — den blir missvisande vid låg volym.
@@ -133,6 +157,14 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
       </div>
       {children}
     </Card>
+  );
+}
+
+function Locked({ text }: { text: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+      {text}
+    </div>
   );
 }
 

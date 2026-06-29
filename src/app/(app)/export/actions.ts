@@ -1,6 +1,7 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { computeSessionLoad } from "@/lib/load/load";
 
 export type ExportRow = {
   date: string;
@@ -11,6 +12,8 @@ export type ExportRow = {
   reps: number | string;
   weight: number | string;
   duration: number | string;
+  /** Tibial load (AU) for the whole session — repeated on each gym-exercise row. */
+  tibial_load: number | string;
   pain_score: number | string;
   rpe: number | string;
   daily_soreness: number | string;
@@ -40,9 +43,19 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
     sessionsQ = sessionsQ.gte("date", from).lte("date", to);
     checkinsQ = checkinsQ.gte("date", from).lte("date", to);
   }
-  const [{ data: sessions, error }, { data: checkins, error: cErr }] = await Promise.all([sessionsQ, checkinsQ]);
+  const [{ data: sessions, error }, { data: checkins, error: cErr }, { data: profile }] = await Promise.all([
+    sessionsQ,
+    checkinsQ,
+    supabase.from("profiles").select("weight_kg").maybeSingle(),
+  ]);
   if (error) throw error;
   if (cErr) throw cErr;
+
+  // Fallback body weight for tibial-load scaling when a session lacks a snapshot.
+  const latestWeight = [...((checkins ?? []) as { body_weight_kg: number | null }[])]
+    .reverse()
+    .find((c) => c.body_weight_kg != null)?.body_weight_kg;
+  const fallbackBodyKg = latestWeight ?? profile?.weight_kg ?? null;
 
   const ids = (sessions ?? []).map((s) => s.id);
   const [{ data: sets }, { data: followups }] = await Promise.all([
@@ -56,7 +69,10 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
 
   type GS = { session_id: string; exercise: string; sets: number | null; reps: number | null; weight: number | null; notes: string | null };
   type FU = { session_id: string; pain_score: number | null; rpe: number | null };
-  type S = { id: string; date: string; type: string; duration_minutes: number | null; notes: string | null };
+  type S = {
+    id: string; date: string; type: string; duration_minutes: number | null; notes: string | null;
+    rpe: number | null; running_minutes: number | null; surface: string | null; body_kg: number | null;
+  };
   type CK = { date: string; soreness: number | null; notes: string | null };
 
   const setsBySession = new Map<string, GS[]>();
@@ -75,16 +91,27 @@ export async function fetchExportRows(range: ExportRange, anchorISO: string): Pr
     reps: "",
     weight: "",
     duration: "",
+    tibial_load: "" as number | string,
     pain_score: "",
     rpe: "",
     daily_soreness: "",
-  } as const;
+  };
 
   for (const s of (sessions ?? []) as S[]) {
     const f = fuBySession.get(s.id);
+    const load = computeSessionLoad({
+      type: s.type,
+      duration_minutes: s.duration_minutes,
+      running_minutes: s.running_minutes,
+      rpe: s.rpe ?? f?.rpe ?? null,
+      surface: s.surface,
+      body_kg: s.body_kg,
+      fallbackBodyKg,
+    });
     const fuFields = {
       pain_score: f?.pain_score ?? "",
-      rpe: f?.rpe ?? "",
+      rpe: s.rpe ?? f?.rpe ?? "",
+      tibial_load: load.tibial || "",
     };
     if (s.type === "gym") {
       const gs = setsBySession.get(s.id) ?? [];

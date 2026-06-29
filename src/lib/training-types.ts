@@ -23,17 +23,17 @@ export type TrainingTypeDef = {
 };
 
 export const TRAINING_TYPES: TrainingTypeDef[] = [
-  { slug: "gym",        label: "Strength training", icon: Dumbbell,       flow: "gym"    },
-  { slug: "running",    label: "Running",           icon: Footprints,     flow: "cardio" },
-  { slug: "cycling",    label: "Cycling",           icon: Bike,           flow: "cardio" },
-  { slug: "walking",    label: "Walking",           icon: PersonStanding, flow: "cardio" },
-  { slug: "football",   label: "Football",          icon: Volleyball,     flow: "cardio" },
-  { slug: "swimming",   label: "Swimming",          icon: Waves,          flow: "cardio" },
-  { slug: "basketball", label: "Basketball",        icon: Activity,       flow: "cardio" },
-  { slug: "tennis",     label: "Tennis",            icon: Activity,       flow: "cardio" },
-  { slug: "yoga",       label: "Yoga / Mobility",   icon: Activity,       flow: "cardio" },
-  { slug: "climbing",   label: "Climbing",          icon: Mountain,       flow: "cardio" },
-  { slug: "other",      label: "Other",             icon: Activity,       flow: "cardio" },
+  { slug: "gym",        label: "Styrketräning",   icon: Dumbbell,       flow: "gym"    },
+  { slug: "running",    label: "Löpning",         icon: Footprints,     flow: "cardio" },
+  { slug: "cycling",    label: "Cykling",         icon: Bike,           flow: "cardio" },
+  { slug: "walking",    label: "Promenad",        icon: PersonStanding, flow: "cardio" },
+  { slug: "football",   label: "Fotboll",         icon: Volleyball,     flow: "cardio" },
+  { slug: "swimming",   label: "Simning",         icon: Waves,          flow: "cardio" },
+  { slug: "basketball", label: "Basket",          icon: Activity,       flow: "cardio" },
+  { slug: "tennis",     label: "Tennis",          icon: Activity,       flow: "cardio" },
+  { slug: "yoga",       label: "Yoga / Rörlighet", icon: Activity,      flow: "cardio" },
+  { slug: "climbing",   label: "Klättring",       icon: Mountain,       flow: "cardio" },
+  { slug: "other",      label: "Annat",           icon: Activity,       flow: "cardio" },
 ];
 
 const BY_SLUG = new Map(TRAINING_TYPES.map((t) => [t.slug, t]));

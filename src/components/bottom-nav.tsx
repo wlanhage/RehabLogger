@@ -5,11 +5,11 @@ import { Home, PlusCircle, Calendar, Sparkles, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { href: "/",        label: "Home",     icon: Home       },
-  { href: "/add",     label: "Add",      icon: PlusCircle },
-  { href: "/calendar",label: "Calendar", icon: Calendar   },
+  { href: "/",        label: "Hem",      icon: Home       },
+  { href: "/add",     label: "Logga",    icon: PlusCircle },
+  { href: "/calendar",label: "Kalender", icon: Calendar   },
   { href: "/coach",   label: "Coach",    icon: Sparkles   },
-  { href: "/profile", label: "Profile",  icon: User       },
+  { href: "/profile", label: "Profil",   icon: User       },
 ];
 
 export function BottomNav() {

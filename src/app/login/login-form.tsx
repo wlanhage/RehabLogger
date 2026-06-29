@@ -26,24 +26,24 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">E-post</Label>
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">Lösenord</Label>
         <Input id="password" name="password" type="password" autoComplete="current-password" required />
       </div>
       {error && <p className="text-sm text-red-500">{error}</p>}
       {info && <p className="text-sm text-muted-foreground">{info}</p>}
       <Button type="submit" disabled={pending} className="w-full" size="lg">
-        {pending ? "..." : mode === "signin" ? "Sign in" : "Create account"}
+        {pending ? "..." : mode === "signin" ? "Logga in" : "Skapa konto"}
       </Button>
       <button
         type="button"
         onClick={() => setMode((m) => (m === "signin" ? "signup" : "signin"))}
         className="w-full text-sm text-muted-foreground"
       >
-        {mode === "signin" ? "Need an account? Sign up" : "Have an account? Sign in"}
+        {mode === "signin" ? "Behöver du ett konto? Registrera dig" : "Har du ett konto? Logga in"}
       </button>
     </form>
   );
