@@ -15,7 +15,7 @@ import {
 import { SET_FORMATS } from "@/lib/constants";
 import { saveGymSet, skipGymSet, finishSession } from "./actions";
 import type { GymSet } from "@/types/db";
-import { ChevronLeft, ChevronRight, SkipForward } from "lucide-react";
+import { ChevronLeft, ChevronRight, SkipForward, Loader2 } from "lucide-react";
 
 type Draft = {
   id: string;
@@ -55,6 +55,7 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
   const [index, setIndex] = useState(0);
   const total = drafts.length;
   const current = drafts[index];
+  const [finishing, setFinishing] = useState(false);
   const dirtyRef = useRef<Record<string, boolean>>({});
   const saveTimer = useRef<number | null>(null);
 
@@ -141,9 +142,14 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
   }
 
   async function finish() {
-    if (dirtyRef.current[current.id]) await persist(current);
-    await finishSession(sessionId);
-    router.push(`/follow-up/${sessionId}`);
+    setFinishing(true);
+    try {
+      if (dirtyRef.current[current.id]) await persist(current);
+      await finishSession(sessionId);
+      router.push(`/follow-up/${sessionId}`);
+    } catch {
+      setFinishing(false);
+    }
   }
 
   return (
@@ -241,8 +247,8 @@ export function GymFlow({ sessionId, initialSets }: { sessionId: string; initial
               <ChevronRight className="h-5 w-5" />
             </Button>
           ) : (
-            <Button className="flex-1" size="lg" onClick={finish}>
-              Avsluta passet
+            <Button className="flex-1" size="lg" onClick={finish} disabled={finishing}>
+              {finishing ? <Loader2 className="h-5 w-5 animate-spin" /> : "Avsluta passet"}
             </Button>
           )}
         </div>

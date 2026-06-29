@@ -5,6 +5,7 @@ import { format, parseISO, isValid } from "date-fns";
 import { sv } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/server";
 import { getType, DEFAULT_ENABLED } from "@/lib/training-types";
+import { AddCard } from "./add-card";
 
 function safeDate(d?: string): string | null {
   if (!d) return null;
@@ -56,13 +57,8 @@ export default async function AddPage({
         </Card>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          {options.map(({ slug, label, icon: Icon, href }) => (
-            <Link key={slug} href={`${href}${qs}`}>
-              <Card className="aspect-square flex flex-col items-center justify-center gap-2 text-center">
-                <Icon className="h-8 w-8" />
-                <span className="font-medium text-sm">{label}</span>
-              </Card>
-            </Link>
+          {options.map(({ slug, label, href }) => (
+            <AddCard key={slug} href={`${href}${qs}`} slug={slug} label={label} />
           ))}
         </div>
       )}

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { saveFollowup } from "./actions";
@@ -47,7 +47,7 @@ export function FollowupForm({ sessionId, needsRpe }: { sessionId: string; needs
         Fortsätt logga morgon-check-in de kommande dagarna — det är där recovery-lagget mäts.
       </p>
 
-      <Button type="submit" size="lg" className="w-full">Spara</Button>
+      <SubmitButton size="lg" className="w-full" pendingText="Sparar…">Spara</SubmitButton>
     </form>
   );
 }

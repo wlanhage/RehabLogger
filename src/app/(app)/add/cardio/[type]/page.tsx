@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -87,9 +87,9 @@ export default async function CardioPage({
         <Textarea id="notes" name="notes" rows={3} />
       </div>
 
-      <Button type="submit" size="lg" className="w-full">
+      <SubmitButton size="lg" className="w-full" pendingText="Sparar…">
         Spara & fortsätt
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -113,9 +113,9 @@ export function CheckinForm({ date, initial }: { date: string; initial: DailyChe
         />
       </div>
 
-      <Button type="submit" size="lg" className="w-full">
+      <SubmitButton size="lg" className="w-full" pendingText="Sparar…">
         {initial ? "Uppdatera check-in" : "Spara check-in"}
-      </Button>
+      </SubmitButton>
     </form>
   );
 }
