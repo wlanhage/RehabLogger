@@ -29,7 +29,7 @@ create table if not exists public.sessions (
 );
 create index if not exists sessions_user_date_idx on public.sessions(user_id, date desc);
 create unique index if not exists sessions_user_external_id_idx
-  on public.sessions(user_id, external_id) where external_id is not null;
+  on public.sessions(user_id, external_id);
 
 -- Gym sets (one row per exercise in a gym session)
 create table if not exists public.gym_sets (
