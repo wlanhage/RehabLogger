@@ -60,12 +60,31 @@ function toDateISO(v: unknown): string | null {
 
 export async function POST(req: Request) {
   const secret = process.env.HEALTH_IMPORT_SECRET;
-  const owner = process.env.HEALTH_OWNER_USER_ID;
-  if (!secret || !owner) {
-    return NextResponse.json({ error: "Import not configured" }, { status: 503 });
+  if (!secret) {
+    return NextResponse.json({ error: "Import not configured (HEALTH_IMPORT_SECRET)" }, { status: 503 });
   }
   if (req.headers.get("x-import-secret") !== secret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const supabaseEarly = createAdminClient();
+
+  // Owner: explicit env wins; otherwise auto-detect the single user (this is a
+  // personal app). Removes the need to look up your UID by hand.
+  let owner = process.env.HEALTH_OWNER_USER_ID;
+  if (!owner) {
+    const { data: list, error: listErr } = await supabaseEarly.auth.admin.listUsers();
+    if (listErr) {
+      return NextResponse.json({ error: "Could not resolve owner: " + listErr.message }, { status: 500 });
+    }
+    if ((list?.users?.length ?? 0) === 1) {
+      owner = list.users[0].id;
+    } else {
+      return NextResponse.json(
+        { error: "Set HEALTH_OWNER_USER_ID — more than one user exists." },
+        { status: 503 },
+      );
+    }
   }
 
   let payload: unknown;
@@ -84,7 +103,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, imported: 0, note: "no workouts in payload" });
   }
 
-  const supabase = createAdminClient();
+  const supabase = supabaseEarly;
   const rows = [];
   const skipped: string[] = [];
 

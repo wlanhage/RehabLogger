@@ -107,10 +107,15 @@ export default async function HomePage() {
           <div className="flex-1">
             <p className="font-medium">Dagens check-in</p>
             {checkin ? (
-              <p className="text-sm text-muted-foreground">
-                Ömhet {Math.max(checkin.shin_tenderness_left ?? 0, checkin.shin_tenderness_right ?? 0)}/10
-                <span className="ml-1 underline">ändra</span>
-              </p>
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Ömhet {Math.max(checkin.shin_tenderness_left ?? 0, checkin.shin_tenderness_right ?? 0)}/10
+                  <span className="ml-1 underline">ändra</span>
+                </p>
+                {intelligence.todayContext && intelligence.todayContext.level !== "normal" && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{intelligence.todayContext.text}</p>
+                )}
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">Hur känns kroppen idag?</p>
             )}

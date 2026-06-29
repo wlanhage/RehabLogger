@@ -9,6 +9,7 @@ import {
   type RecoveryResponse,
 } from "./recovery";
 import { decideToday, type DailyDecision } from "./decision";
+import { buildDigest, analyzeTriggers, classifyToday, type TriggerAnalysis, type TodayContext } from "./insights";
 import { IMPACT_ACTIVITIES } from "./config";
 import { startOfWeek, format as fmt } from "date-fns";
 import type { DailyCheckin, Session, Profile } from "@/types/db";
@@ -29,6 +30,14 @@ export type LoadIntelligence = {
   /** Body weight per day for trend charts. */
   weightSeries: { date: string; kg: number }[];
   bodyKg: number | null;
+  /** Personal resting-tenderness baseline used by the recovery model. */
+  baseline: number;
+  /** Plain-language status report (decision support, not planning). */
+  digest: string[];
+  /** What likely triggered each flare + patterns. */
+  triggers: TriggerAnalysis;
+  /** Is today's reading normal for this user? */
+  todayContext: TodayContext | null;
 };
 
 function worse(a: number | null, b: number | null): number | null {
@@ -167,6 +176,21 @@ export async function loadIntelligence(days = 60): Promise<LoadIntelligence> {
     right: c.shin_tenderness_right,
   }));
 
+  // Decision-support analysis.
+  const digest = buildDigest({
+    tenderness: tendernessSeries,
+    recoveries,
+    loadChangePct,
+    runsThisWeek,
+    baseline: personalBaseline,
+  });
+  const triggers = analyzeTriggers(recoveries, sessionRows);
+  const recentWorse = tendernessSeries
+    .slice(-14)
+    .map((d) => (d.left == null && d.right == null ? null : Math.max(d.left ?? 0, d.right ?? 0)))
+    .filter((v): v is number => v != null);
+  const todayContext = classifyToday(todayPoint?.tendernessWorse ?? null, personalBaseline, recentWorse);
+
   return {
     decision,
     todayCheckin,
@@ -178,6 +202,10 @@ export async function loadIntelligence(days = 60): Promise<LoadIntelligence> {
     tendernessSeries,
     weightSeries,
     bodyKg,
+    baseline: personalBaseline,
+    digest,
+    triggers,
+    todayContext,
   };
 }
 
@@ -215,6 +243,13 @@ export function formatLoadForPrompt(li: LoadIntelligence): string {
     }
   } else {
     lines.push("RECOVERY RESPONSES: none yet — no impact sessions logged.");
+  }
+
+  if (li.triggers.findings.length) {
+    lines.push("FLARE PATTERNS (attribution): " + li.triggers.findings.join(" "));
+  }
+  if (li.todayContext) {
+    lines.push("TODAY IN CONTEXT: " + li.todayContext.text);
   }
 
   return lines.join("\n");

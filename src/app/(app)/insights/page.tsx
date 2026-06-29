@@ -70,6 +70,18 @@ export default async function InsightsPage() {
       </Link>
       <h1 className="text-2xl font-semibold">Insikter</h1>
 
+      <Card className="space-y-2">
+        <h2 className="font-semibold">Lägesrapport</h2>
+        <ul className="space-y-1.5 text-sm">
+          {li.digest.map((line, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="text-muted-foreground">·</span>
+              <span>{line}</span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
       <div className="grid grid-cols-2 gap-3">
         <Stat label="Bästa tolererade löpdos" value={bestRun ? `${bestRun} AU` : "—"} />
         <Stat
@@ -115,6 +127,41 @@ export default async function InsightsPage() {
           <BarChart bars={runLag} unit=" d" colorFor={(b) => TONE[(b as { status?: keyof typeof TONE }).status ?? "ongoing"]} />
         ) : (
           <Locked text="Logga ett löppass och check-ins dagarna efter, så beräknas hur många dagar återhämtningen tog." />
+        )}
+      </Section>
+
+      <Section title="Vad utlöser dina skov?" hint="Vilka pass föregick förhöjd reaktion — och om något stör attributionen.">
+        {li.recoveries.length === 0 ? (
+          <Locked text="Logga impact-pass och check-ins, så kopplar appen ihop skov med vad som föregick dem." />
+        ) : (
+          <div className="space-y-3">
+            {li.triggers.findings.length > 0 && (
+              <ul className="space-y-1.5 text-sm">
+                {li.triggers.findings.map((f, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="text-muted-foreground">·</span>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {li.triggers.flares.length > 0 && (
+              <div className="space-y-1.5 border-t border-border pt-3">
+                {li.triggers.flares.slice(0, 6).map((f, i) => (
+                  <div key={i} className="text-sm flex items-baseline justify-between gap-2">
+                    <span>
+                      <span className="capitalize">{tShort(f.date)}</span> · {f.label}
+                      {f.runningMinutes ? ` ${f.runningMinutes} min` : ""} · {f.surface}
+                      {f.confounded && <span className="text-muted-foreground"> · osäker orsak</span>}
+                    </span>
+                    <span className="text-muted-foreground whitespace-nowrap">
+                      {f.daysUntilReady != null ? `${f.daysUntilReady} d` : "pågår"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </Section>
 
