@@ -18,6 +18,17 @@ export default async function InsightsPage() {
   const li = await loadIntelligence(60);
   const tShort = (d: string) => format(parseISO(d), "d/M");
 
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+  const { data: needEnrich, count: enrichCount } = await supabase
+    .from("sessions")
+    .select("id", { count: "exact" })
+    .neq("imported_from", "manual")
+    .is("rpe", null)
+    .order("date", { ascending: true })
+    .limit(1);
+  const enrichOldestId = needEnrich?.[0]?.id ?? null;
+
   const tenderDates = li.tendernessSeries.map((d) => tShort(d.date));
   const tenderLeft = li.tendernessSeries.map((d) => d.left);
   const tenderRight = li.tendernessSeries.map((d) => d.right);
@@ -69,6 +80,18 @@ export default async function InsightsPage() {
         <ChevronLeft className="h-4 w-4" /> Hem
       </Link>
       <h1 className="text-2xl font-semibold">Insikter</h1>
+
+      {enrichCount && enrichCount > 0 && enrichOldestId && (
+        <Link
+          href={`/session/${enrichOldestId}/edit`}
+          className="flex items-center justify-between rounded-2xl border border-yellow-500/40 bg-card px-4 py-3 text-sm"
+        >
+          <span>
+            <span className="font-medium">{enrichCount} importerade pass</span> behöver RPE/underlag
+          </span>
+          <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
+        </Link>
+      )}
 
       <Card className="space-y-2">
         <h2 className="font-semibold">Lägesrapport</h2>

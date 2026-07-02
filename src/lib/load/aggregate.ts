@@ -10,8 +10,9 @@ import {
 } from "./recovery";
 import { decideToday, type DailyDecision } from "./decision";
 import { buildDigest, analyzeTriggers, classifyToday, type TriggerAnalysis, type TodayContext } from "./insights";
+import { buildCoachView, type CoachView } from "./coach-view";
 import { IMPACT_ACTIVITIES } from "./config";
-import { startOfWeek, format as fmt } from "date-fns";
+import { startOfWeek, format as fmt, addDays } from "date-fns";
 import type { DailyCheckin, Session, Profile } from "@/types/db";
 
 export type LoadIntelligence = {
@@ -38,6 +39,8 @@ export type LoadIntelligence = {
   triggers: TriggerAnalysis;
   /** Is today's reading normal for this user? */
   todayContext: TodayContext | null;
+  /** Everything the coach-style Home needs. */
+  coach: CoachView;
 };
 
 function worse(a: number | null, b: number | null): number | null {
@@ -191,6 +194,47 @@ export async function loadIntelligence(days = 60): Promise<LoadIntelligence> {
     .filter((v): v is number => v != null);
   const todayContext = classifyToday(todayPoint?.tendernessWorse ?? null, personalBaseline, recentWorse);
 
+  // ---- Coach view (Home) ----------------------------------------------------
+  const sessionById = new Map(sessionRows.map((s) => [s.id, s]));
+  const greenRunSessions = recoveries
+    .filter((r) => r.type === "running" && r.status === "green")
+    .map((r) => {
+      const s = sessionById.get(r.sessionId);
+      return { date: r.date, minutes: s?.running_minutes ?? s?.duration_minutes ?? 0, tibial: r.tibial };
+    })
+    .filter((g) => g.minutes > 0);
+  const bestGreenTibial = greenRunSessions.length ? Math.max(...greenRunSessions.map((g) => g.tibial)) : null;
+
+  // Tenderness trend up? (last 5 vs previous 5 worse-side averages)
+  const worseSeries = tendernessSeries
+    .map((d) => (d.left == null && d.right == null ? null : Math.max(d.left ?? 0, d.right ?? 0)))
+    .filter((v): v is number => v != null);
+  const l5 = worseSeries.slice(-5);
+  const p5 = worseSeries.slice(-10, -5);
+  const tendernessTrendUp =
+    l5.length >= 3 && p5.length >= 1
+      ? l5.reduce((s, v) => s + v, 0) / l5.length - p5.reduce((s, v) => s + v, 0) / p5.length >= 0.5
+      : false;
+
+  const monday = startOfWeek(new Date(todayISO + "T00:00:00"), { weekStartsOn: 1 });
+  const weekEndsISO = [3, 2, 1, 0].map((w) =>
+    fmt(addDays(subDays(monday, w * 7), 6), "yyyy-MM-dd"),
+  );
+
+  const coach = buildCoachView({
+    todayISO,
+    decision,
+    recoveries,
+    greenRunSessions,
+    bestGreenTibial,
+    lastImpactDate: lastImpact?.date ?? null,
+    todayTenderness: todayPoint?.tendernessWorse ?? null,
+    hasCheckinToday: !!todayCheckin,
+    tendernessTrendUp,
+    acwrRatio: acwr.ratio,
+    weekEndsISO,
+  });
+
   return {
     decision,
     todayCheckin,
@@ -206,6 +250,7 @@ export async function loadIntelligence(days = 60): Promise<LoadIntelligence> {
     digest,
     triggers,
     todayContext,
+    coach,
   };
 }
 

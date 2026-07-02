@@ -1,196 +1,156 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
-import { format, startOfWeek, endOfWeek } from "date-fns";
+import { format } from "date-fns";
 import { sv } from "date-fns/locale";
 import Link from "next/link";
-import { HeartPulse, ChevronRight } from "lucide-react";
-import type { Session, DailyCheckin, Profile } from "@/types/db";
-import { sorenessTone } from "@/lib/checkin-ui";
+import { ChevronRight, Check, AlertTriangle, TrendingUp, TrendingDown, Minus, HeartPulse } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { iconFor, labelFor } from "@/lib/training-types";
+import { LineChart } from "@/components/charts";
 import { loadIntelligence } from "@/lib/load/aggregate";
-import { TodayDecision } from "@/components/today-decision";
+import type { CoachStatus, Trend } from "@/lib/load/coach-view";
+import { cn } from "@/lib/utils";
+
+const STATUS_ACCENT: Record<CoachStatus, { dot: string; ring: string }> = {
+  ready: { dot: "bg-emerald-500", ring: "border-emerald-500/30" },
+  in_progress: { dot: "bg-amber-500", ring: "border-amber-500/30" },
+  delayed: { dot: "bg-rose-500", ring: "border-rose-500/30" },
+};
+
+function TrendIcon({ trend }: { trend: Trend }) {
+  if (trend === "up") return <TrendingUp className="h-4 w-4" />;
+  if (trend === "down") return <TrendingDown className="h-4 w-4" />;
+  return <Minus className="h-4 w-4" />;
+}
 
 export default async function HomePage() {
   const supabase = await createClient();
   const today = new Date();
   const todayISO = today.toISOString().slice(0, 10);
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
-  const [{ data: weekSessions }, { data: recent }, { data: todayCheckin }, { data: profile }] = await Promise.all([
-    supabase
-      .from("sessions")
-      .select("*")
-      .gte("date", format(weekStart, "yyyy-MM-dd"))
-      .lte("date", format(weekEnd, "yyyy-MM-dd"))
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("sessions")
-      .select("*")
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(5),
-    supabase.from("daily_checkins").select("*").eq("date", todayISO).maybeSingle(),
-    supabase.from("profiles").select("training_types").maybeSingle(),
-  ]);
+  const { data: todayCheckin } = await supabase
+    .from("daily_checkins")
+    .select("id")
+    .eq("date", todayISO)
+    .maybeSingle();
 
-  const intelligence = await loadIntelligence();
-
-  // Imported sessions still missing RPE/surface/jog-split.
-  const { data: needEnrich, count: enrichCount } = await supabase
-    .from("sessions")
-    .select("id", { count: "exact" })
-    .neq("imported_from", "manual")
-    .is("rpe", null)
-    .order("date", { ascending: true })
-    .limit(1);
-  const enrichOldestId = needEnrich?.[0]?.id ?? null;
-
-  const enabled = ((profile as Pick<Profile, "training_types"> | null)?.training_types ?? []) as string[];
-
-  // Counts only for enabled types so the dashboard reflects the user's setup.
-  const counts: Record<string, number> = {};
-  enabled.forEach((t) => (counts[t] = 0));
-  (weekSessions ?? []).forEach((s: Session) => {
-    if (enabled.includes(s.type)) counts[s.type] = (counts[s.type] ?? 0) + 1;
-    else counts[s.type] = (counts[s.type] ?? 0) + 1; // still show types user has logged before
-  });
-
-  const latest = recent?.[0];
-  const checkin = (todayCheckin as DailyCheckin | null) ?? null;
+  const { coach } = await loadIntelligence();
+  const accent = STATUS_ACCENT[coach.status];
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Logo size={40} />
-          <div>
-            <p className="text-sm text-muted-foreground leading-none capitalize">{format(today, "EEEE", { locale: sv })}</p>
-            <h1 className="text-2xl font-semibold leading-tight capitalize">{format(today, "d MMMM", { locale: sv })}</h1>
-          </div>
+    <div className="space-y-5">
+      <header className="flex items-center gap-3 pt-1">
+        <Logo size={34} />
+        <div>
+          <p className="text-xs text-muted-foreground leading-none capitalize">
+            {format(today, "EEEE d MMMM", { locale: sv })}
+          </p>
+          <h1 className="text-xl font-semibold leading-tight">Min kropp idag</h1>
         </div>
       </header>
 
-      <TodayDecision decision={intelligence.decision} hasCheckin={!!checkin} />
-
-      {enrichCount && enrichCount > 0 && enrichOldestId && (
+      {/* Check-in nudge — only when today's reading is missing */}
+      {!todayCheckin && (
         <Link
-          href={`/session/${enrichOldestId}/edit`}
-          className="flex items-center justify-between rounded-2xl border border-yellow-500/40 bg-card px-4 py-3 text-sm hover:bg-muted"
+          href="/checkin"
+          className="flex items-center gap-3 rounded-2xl border border-dashed border-border bg-card px-4 py-3"
         >
-          <span>
-            <span className="font-medium">{enrichCount} importerade pass</span> behöver RPE/underlag
-          </span>
+          <HeartPulse className="h-5 w-5" />
+          <span className="flex-1 text-sm font-medium">Logga hur kroppen känns idag</span>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
       )}
 
-      <Link
-        href="/insights"
-        className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium hover:bg-muted"
-      >
-        <span>Insikter & trender</span>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-      </Link>
-
-      <Link href="/checkin">
-        <Card className="flex items-center gap-3">
-          <div
-            className={`h-10 w-10 rounded-full flex items-center justify-center ${
-              checkin ? sorenessTone(checkin.soreness ?? 0).bg : "bg-muted"
-            }`}
-          >
-            <HeartPulse className="h-5 w-5" />
+      {/* 1. CURRENT CAPACITY — the hero */}
+      <Link href="/insights">
+        <Card className={cn("border-2 space-y-4", accent.ring)}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Löpkapacitet</span>
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <TrendIcon trend={coach.capacityTrend} />
+              {coach.capacityTrendWord}
+            </span>
           </div>
-          <div className="flex-1">
-            <p className="font-medium">Dagens check-in</p>
-            {checkin ? (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Ömhet {Math.max(checkin.shin_tenderness_left ?? 0, checkin.shin_tenderness_right ?? 0)}/10
-                  <span className="ml-1 underline">ändra</span>
-                </p>
-                {intelligence.todayContext && intelligence.todayContext.level !== "normal" && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{intelligence.todayContext.text}</p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">Hur känns kroppen idag?</p>
-            )}
+          <div className="text-5xl font-semibold tracking-tight">{coach.capacityLabel}</div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              Säker progression: <span className="text-foreground">{coach.progressionLabel}</span>
+            </span>
+            <span className="text-muted-foreground">{coach.confidence}%</span>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Card>
       </Link>
 
-      <Card>
-        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Senaste aktivitet</p>
-        {latest ? (
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">{labelFor(latest.type)}</p>
-              <p className="text-sm text-muted-foreground">{format(new Date(latest.date), "d MMM")}</p>
-            </div>
-            {(() => { const I = iconFor(latest.type); return <I className="h-6 w-6" />; })()}
+      {/* 2. TODAY'S RECOMMENDATION */}
+      <Link href="/insights">
+        <Card className="space-y-3">
+          <span className="text-sm text-muted-foreground">Dagens pass</span>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">{coach.recommendation.emoji}</span>
+            <span className="text-2xl font-semibold">{coach.recommendation.label}</span>
+            <span className="ml-auto text-sm text-muted-foreground">{coach.recommendation.confidence}%</span>
           </div>
+          <p className="text-sm leading-relaxed text-muted-foreground">{coach.recommendation.why}</p>
+        </Card>
+      </Link>
+
+      {/* 3. RECOVERY STATUS */}
+      <Card className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className={cn("h-2.5 w-2.5 rounded-full", accent.dot)} />
+          <span className="font-medium">{coach.statusLabel}</span>
+          <span className="ml-auto text-sm text-muted-foreground">{coach.statusConfidence}%</span>
+        </div>
+        <div className="grid grid-cols-2 text-sm text-muted-foreground">
+          <span>
+            Redo <span className="text-foreground">{coach.expectedReadyLabel}</span>
+          </span>
+          <span className="text-right">Trend: {coach.statusTrendWord}</span>
+        </div>
+      </Card>
+
+      {/* 4. NEXT IMPACT SESSION */}
+      <Card className="space-y-2">
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm text-muted-foreground">Nästa löppass</span>
+          <span className="font-medium">{coach.nextImpact.whenLabel}</span>
+        </div>
+        <p className="text-sm">{coach.nextImpact.suggestion}</p>
+        <p className="text-xs text-muted-foreground">
+          Uppskattad chans att lyckas: {coach.nextImpact.successProbability}%
+        </p>
+      </Card>
+
+      {/* 5. CAPACITY TREND */}
+      <Card className="space-y-3">
+        <span className="text-sm text-muted-foreground">Kapacitet över tid</span>
+        {coach.capacitySeries.some((s) => s.minutes != null) ? (
+          <LineChart
+            labels={coach.capacitySeries.map((s) => s.week)}
+            series={[{ label: "min", color: "#10b981", values: coach.capacitySeries.map((s) => s.minutes) }]}
+            unit=" min"
+            height={80}
+          />
         ) : (
-          <p className="text-sm text-muted-foreground">Ingen aktivitet än.</p>
+          <p className="text-sm text-muted-foreground">Byggs upp när du loggat några löppass.</p>
         )}
       </Card>
 
-      <section>
-        <h2 className="text-sm font-medium text-muted-foreground mb-2">Denna vecka</h2>
-        {Object.keys(counts).length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Inga aktiviteter valda. Välj några på{" "}
-            <Link href="/profile" className="underline">Profil</Link>.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {Object.keys(counts).map((slug) => {
-              const Icon = iconFor(slug);
-              return (
-                <Card key={slug} className="flex items-center gap-3">
-                  <Icon className="h-5 w-5" />
-                  <div>
-                    <p className="text-2xl font-semibold leading-none">{counts[slug]}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{labelFor(slug)}</p>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <h2 className="text-sm font-medium text-muted-foreground mb-2">Senaste passen</h2>
-        <div className="space-y-2">
-          {(recent ?? []).length === 0 && (
-            <p className="text-sm text-muted-foreground">Inget än.</p>
-          )}
-          {(recent ?? []).map((s: Session) => {
-            const Icon = iconFor(s.type);
-            return (
-              <Link key={s.id} href={`/calendar/${s.date}`}>
-                <Card className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Icon className="h-5 w-5" />
-                    <div>
-                      <p className="font-medium">{labelFor(s.type)}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{format(new Date(s.date), "EEE d MMM", { locale: sv })}</p>
-                    </div>
-                  </div>
-                  {s.duration_minutes && (
-                    <span className="text-sm text-muted-foreground">{s.duration_minutes} min</span>
-                  )}
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
+      {/* 6. DECISION REASONING */}
+      <Card className="space-y-2">
+        <span className="text-sm text-muted-foreground">Beslutet bygger på</span>
+        <ul className="space-y-1.5">
+          {coach.reasoning.map((r, i) => (
+            <li key={i} className="flex items-center gap-2 text-sm">
+              {r.ok ? (
+                <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+              )}
+              <span className={cn(!r.ok && "text-muted-foreground")}>{r.text}</span>
+            </li>
+          ))}
+        </ul>
+      </Card>
     </div>
   );
 }
