@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "./profile-form";
 import { ExportSection } from "./export-section";
+import { AiContextExport } from "@/app/(app)/export/ai-context-button";
 import { PushNotifications } from "@/components/push-notifications";
 import { signOut } from "@/app/login/actions";
 import { Card } from "@/components/ui/card";
@@ -25,6 +26,13 @@ export default async function ProfilePage() {
         <h2 className="text-lg font-semibold">Notiser</h2>
         <Card>
           <PushNotifications />
+        </Card>
+      </section>
+
+      <section className="space-y-3 pt-2">
+        <h2 className="text-lg font-semibold">Export AI Context</h2>
+        <Card>
+          <AiContextExport />
         </Card>
       </section>
 

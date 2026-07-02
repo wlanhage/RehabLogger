@@ -44,6 +44,8 @@ export type RehabFollowup = {
   pain_location: string | null;
   reaction: string | null;
   rpe: number | null;
+  shin_tenderness_left: number | null;
+  shin_tenderness_right: number | null;
   created_at: string;
 };
 
