@@ -120,9 +120,18 @@ export async function POST(req: Request) {
       type: mapActivity(w.name as string | undefined),
       date,
       // Prefer explicit clean fields (Apple Shortcuts sends these); fall back
-      // to Health Auto Export's raw seconds/qty shapes.
-      duration_minutes: num(w.duration_minutes) ?? toMinutes(w.duration),
-      distance_km: num(w.distance_km) ?? num(w.distance),
+      // to Health Auto Export's raw seconds/qty shapes. Unit guards make the
+      // Shortcut robust whether it emits minutes/seconds or km/metres.
+      duration_minutes: (() => {
+        const dm = num(w.duration_minutes);
+        if (dm != null) return dm > 180 ? Math.round(dm / 60) : Math.round(dm); // >180 ⇒ seconds
+        return toMinutes(w.duration);
+      })(),
+      distance_km: (() => {
+        const dk = num(w.distance_km) ?? num(w.distance);
+        if (dk == null) return null;
+        return dk > 100 ? Math.round((dk / 1000) * 100) / 100 : dk; // >100 ⇒ metres
+      })(),
       avg_hr: num(w.avg_hr ?? w.avgHeartRate ?? w.averageHeartRate),
       max_hr: num(w.max_hr ?? w.maxHeartRate),
       calories: num(w.calories ?? w.activeEnergyBurned ?? w.totalEnergyBurned),
