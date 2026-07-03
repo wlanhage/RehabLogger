@@ -119,12 +119,14 @@ export async function POST(req: Request) {
       external_id: String(externalId),
       type: mapActivity(w.name as string | undefined),
       date,
-      duration_minutes: toMinutes(w.duration),
-      distance_km: num(w.distance),
-      avg_hr: num(w.avgHeartRate ?? w.averageHeartRate),
-      max_hr: num(w.maxHeartRate),
-      calories: num(w.activeEnergyBurned ?? w.totalEnergyBurned ?? w.calories),
-      imported_from: "Apple Watch",
+      // Prefer explicit clean fields (Apple Shortcuts sends these); fall back
+      // to Health Auto Export's raw seconds/qty shapes.
+      duration_minutes: num(w.duration_minutes) ?? toMinutes(w.duration),
+      distance_km: num(w.distance_km) ?? num(w.distance),
+      avg_hr: num(w.avg_hr ?? w.avgHeartRate ?? w.averageHeartRate),
+      max_hr: num(w.max_hr ?? w.maxHeartRate),
+      calories: num(w.calories ?? w.activeEnergyBurned ?? w.totalEnergyBurned),
+      imported_from: (w.source as string) || "Apple Watch",
     });
   }
 
