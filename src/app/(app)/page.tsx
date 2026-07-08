@@ -61,27 +61,43 @@ export default async function HomePage() {
       )}
 
       {/* 1. CURRENT CAPACITY — the hero */}
-      <Link href="/insights">
-        <Card className={cn("border-2 space-y-4", accent.ring)}>
+      <Link href="/insights" className="block">
+        <Card className={cn("border-2 space-y-3", accent.ring)}>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Löpkapacitet</span>
+            <span className="text-sm text-muted-foreground">Så mycket löpning tål kroppen nu</span>
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <TrendIcon trend={coach.capacityTrend} />
               {coach.capacityTrendWord}
             </span>
           </div>
-          <div className="text-5xl font-semibold tracking-tight">{coach.capacityLabel}</div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              Säker progression: <span className="text-foreground">{coach.progressionLabel}</span>
-            </span>
-            <span className="text-muted-foreground">{coach.confidence}%</span>
-          </div>
+          {coach.capacityMinutes != null ? (
+            <>
+              <div className="text-5xl font-semibold tracking-tight">{coach.capacityLabel}</div>
+              <p className="text-xs text-muted-foreground">
+                Längsta löppass du klarat utan bakslag i skenbenen.
+              </p>
+              <div className="rounded-lg bg-muted px-3 py-2 text-sm">
+                <span className="text-muted-foreground">Förslag på nästa pass: </span>
+                <span className="font-medium">{coach.progressionLabel}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-3xl font-semibold tracking-tight">Inte uppmätt än</div>
+              <p className="text-xs text-muted-foreground">
+                Mäts från ditt första löppass som kroppen tål utan bakslag. Börja så här:
+              </p>
+              <div className="rounded-lg bg-muted px-3 py-2 text-sm font-medium">
+                {coach.progressionLabel}
+              </div>
+            </>
+          )}
+          <p className="text-right text-xs text-muted-foreground">Säkerhet {coach.confidence}%</p>
         </Card>
       </Link>
 
       {/* 2. TODAY'S RECOMMENDATION */}
-      <Link href="/insights">
+      <Link href="/insights" className="block">
         <Card className="space-y-3">
           <span className="text-sm text-muted-foreground">Dagens pass</span>
           <div className="flex items-center gap-3">
