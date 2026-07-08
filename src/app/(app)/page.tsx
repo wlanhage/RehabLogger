@@ -7,6 +7,7 @@ import { ChevronRight, Check, AlertTriangle, TrendingUp, TrendingDown, Minus, He
 import { Logo } from "@/components/logo";
 import { LineChart } from "@/components/charts";
 import { loadIntelligence } from "@/lib/load/aggregate";
+import { FIRST_RUN_TEMPLATE } from "@/lib/load/config";
 import type { CoachStatus, Trend } from "@/lib/load/coach-view";
 import { cn } from "@/lib/utils";
 
@@ -87,9 +88,15 @@ export default async function HomePage() {
               <p className="text-xs text-muted-foreground">
                 Mäts från ditt första löppass som kroppen tål utan bakslag. Börja så här:
               </p>
-              <div className="rounded-lg bg-muted px-3 py-2 text-sm font-medium">
-                {coach.progressionLabel}
-              </div>
+              <ol className="rounded-lg bg-muted px-3 py-2.5 text-sm space-y-1.5">
+                {FIRST_RUN_TEMPLATE.steps.map((s, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="text-muted-foreground">{i + 1}.</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+                <li className="text-xs text-muted-foreground pt-1">{FIRST_RUN_TEMPLATE.summary}</li>
+              </ol>
             </>
           )}
           <p className="text-right text-xs text-muted-foreground">Säkerhet {coach.confidence}%</p>

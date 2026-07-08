@@ -70,7 +70,13 @@ export const THRESHOLDS = {
  * 5 min walk warmup, [2 min jog / 2 min walk] × 6, 5 min walk cooldown.
  */
 export const FIRST_RUN_TEMPLATE = {
-  label: "Run/walk: 5 min gång, sedan 2 min jogg / 2 min gång × 6, 5 min gång",
+  label: "Gå–jogga-pass, 34 min: värm upp med 5 min gång, växla sedan 2 min jogg och 2 min gång 6 gånger, avsluta med 5 min gång",
+  steps: [
+    "Gå 5 min (uppvärmning)",
+    "Jogga 2 min → gå 2 min — upprepa 6 gånger",
+    "Gå 5 min (nedvarvning)",
+  ],
+  summary: "34 min totalt, varav 12 min jogg",
   running_minutes: 12, // 2 × 6 jog blocks
   total_minutes: 34,
   surface: "treadmill",
