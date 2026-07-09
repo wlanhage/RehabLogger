@@ -60,9 +60,31 @@ export const GREEN_PROGRESSION = 0.08; // +8%
 /** Decision thresholds (worse side governs). */
 export const THRESHOLDS = {
   tendernessGreenMax: 2,
+  /** 5–6: yellow on its own (no progression); red only combined with another signal. */
   tendernessRedMin: 5,
+  /** Hard safety floor: tenderness at/above this is ALWAYS red, regardless of readiness. */
+  tendernessHardRedMin: 7,
   readinessLagGreenMax: 2, // days_until_ready ≤ 2 is good
   readinessLagRedMin: 4,
+} as const;
+
+/**
+ * Load Response Index (LRI) tunables. Symptoms are never judged in isolation —
+ * they are normalised against the change in tibial load vs the previous
+ * impact session of the same type. Weighting: lag > readiness > tenderness.
+ */
+export const LRI = {
+  /** Load increase (%) needed before "no extra symptoms" counts as better-than-expected. */
+  betterLoadDeltaMin: 10,
+  /** Tenderness may rise this much regardless of load change. */
+  allowedTendernessBase: 1,
+  /** …plus this much per +25% tibial load. */
+  allowedTendernessPer25pct: 1,
+  /** Lag one day longer than previous session ⇒ slightly elevated. */
+  lagSlightlyDelta: 1,
+  /** Lag ≥2 days longer, or ≥ this absolute value ⇒ concerning. */
+  lagConcerningDelta: 2,
+  lagConcerningAbs: 4,
 } as const;
 
 /**

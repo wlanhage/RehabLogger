@@ -153,6 +153,85 @@ export default async function InsightsPage() {
         )}
       </Section>
 
+      <Section
+        title="Load Response"
+        hint="Kroppens svar per löppass, normaliserat mot dosen. Frågan är inte 'gör det mer ont?' utan 'svarar kroppen värre än förväntat för belastningen?'."
+      >
+        {li.loadResponse.entries.length === 0 ? (
+          <Locked text="Beräknas från ditt första löppass — jämför alltid mot föregående pass, aldrig mot vilodagar." />
+        ) : (
+          <div className="space-y-3">
+            {li.loadResponse.latest && (
+              <div className="rounded-lg bg-muted px-3 py-2.5 text-sm space-y-1">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Load</p>
+                    <p className="font-medium">
+                      {li.loadResponse.latest.loadDeltaPct != null
+                        ? `${li.loadResponse.latest.loadDeltaPct > 0 ? "↑ +" : li.loadResponse.latest.loadDeltaPct < 0 ? "↓ " : "→ "}${li.loadResponse.latest.loadDeltaPct}%`
+                        : "första"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Ömhet</p>
+                    <p className="font-medium">
+                      {li.loadResponse.latest.tendernessDelta != null
+                        ? li.loadResponse.latest.tendernessDelta === 0
+                          ? "→ oförändrad"
+                          : `${li.loadResponse.latest.tendernessDelta > 0 ? "↑ +" : "↓ "}${li.loadResponse.latest.tendernessDelta}`
+                        : "–"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Recovery lag</p>
+                    <p className="font-medium">
+                      {li.loadResponse.latest.lagDelta != null
+                        ? li.loadResponse.latest.lagDelta === 0
+                          ? "→ oförändrad"
+                          : `${li.loadResponse.latest.lagDelta > 0 ? "↑ +" : "↓ "}${li.loadResponse.latest.lagDelta} d`
+                        : "–"}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm pt-1">{li.loadResponse.latest.interpretation}</p>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              {li.loadResponse.entries.slice(0, 6).map((e) => (
+                <div key={e.sessionId} className="text-sm flex items-baseline justify-between gap-2">
+                  <span>
+                    {tShort(e.date)} · {e.tibial} AU
+                    {e.loadDeltaPct != null && (
+                      <span className="text-muted-foreground"> ({e.loadDeltaPct > 0 ? "+" : ""}{e.loadDeltaPct}%)</span>
+                    )}
+                    {e.lag != null && <span className="text-muted-foreground"> · lag {e.lag} d</span>}
+                  </span>
+                  <span
+                    className={
+                      e.lri === "concerning"
+                        ? "text-red-500"
+                        : e.lri === "slightly_elevated"
+                          ? "text-yellow-500"
+                          : e.lri === "better_than_expected"
+                            ? "text-emerald-500"
+                            : "text-muted-foreground"
+                    }
+                  >
+                    {e.lri === "better_than_expected"
+                      ? "Bättre än väntat"
+                      : e.lri === "expected"
+                        ? "Förväntad"
+                        : e.lri === "slightly_elevated"
+                          ? "Något förhöjd"
+                          : "Avvikande"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Section>
+
       <Section title="Vad utlöser dina skov?" hint="Vilka pass föregick förhöjd reaktion — och om något stör attributionen.">
         {li.recoveries.length === 0 ? (
           <Locked text="Logga impact-pass och check-ins, så kopplar appen ihop skov med vad som föregick dem." />

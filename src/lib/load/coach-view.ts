@@ -62,7 +62,8 @@ export type CoachInput = {
   lastImpactDate: string | null;
   todayTenderness: number | null;
   hasCheckinToday: boolean;
-  tendernessTrendUp: boolean;
+  /** Latest running load-response is elevated/concerning (exposure-normalised — never raw day-over-day). */
+  abnormalResponse: boolean;
   acwrRatio: number | null;
   weekEndsISO: string[]; // 4, oldest → newest
 };
@@ -89,7 +90,7 @@ export function buildCoachView(inp: CoachInput): CoachView {
 
   // ---- Confidence base ------------------------------------------------------
   let base = 58 + greenCount * 7 + Math.min(totalRec, 4) * 3;
-  if (inp.tendernessTrendUp) base -= 15;
+  if (inp.abnormalResponse) base -= 15;
   if (!inp.hasCheckinToday) base -= 8;
   base = clamp(Math.round(base), 45, 95);
 
@@ -124,12 +125,15 @@ export function buildCoachView(inp: CoachInput): CoachView {
       ? ((parseISO(inp.todayISO).getTime() - parseISO(inp.lastImpactDate).getTime()) / 86_400_000) * 24
       : Infinity;
   const last = recoveries[0];
-  const highTenderness = inp.todayTenderness != null && inp.todayTenderness >= 5;
+  // Tenderness ≥7 is the hard safety floor (always delayed). 5–6 alone means
+  // recovery is still in progress — not delayed — per the exposure-normalised rules.
+  const hardTenderness = inp.todayTenderness != null && inp.todayTenderness >= 7;
+  const elevatedTenderness = inp.todayTenderness != null && inp.todayTenderness >= 5 && !hardTenderness;
 
   let status: CoachStatus;
-  if ((last && (last.status === "red" || last.status === "ongoing")) || trend === "worsening" || highTenderness) {
+  if ((last && (last.status === "red" || last.status === "ongoing")) || trend === "worsening" || hardTenderness) {
     status = "delayed";
-  } else if (hoursSinceImpact < 48 || (last && last.status === "yellow")) {
+  } else if (hoursSinceImpact < 48 || (last && last.status === "yellow") || elevatedTenderness) {
     status = "in_progress";
   } else {
     status = "ready";
@@ -177,7 +181,9 @@ export function buildCoachView(inp: CoachInput): CoachView {
           : kind === "run"
             ? "Morgonen är bra men förra passet gav lång återhämtning. En kortare löprunda idag håller nere risken."
             : kind === "cycle"
-              ? "Du sprang nyligen och skenbenen återhämtar sig. Cykel behåller konditionen med minimal belastning på benhinnorna."
+              ? elevatedTenderness
+                ? "Ömheten är förhöjd idag (utan andra varningssignaler). Cykel eller styrka håller konditionen utan skenbensbelastning — kör du impact ändå: max samma dos som senast."
+                : "Du sprang nyligen och skenbenen återhämtar sig. Cykel behåller konditionen med minimal belastning på benhinnorna."
               : kind === "strength"
                 ? "Impact är inte läge idag. Underkroppsstyrka bygger kapacitet utan repetitiv stöt mot skenbenen."
                 : "Ömheten är förhöjd. Vila benen idag så att nästa impact-pass landar bättre.";
@@ -201,7 +207,12 @@ export function buildCoachView(inp: CoachInput): CoachView {
   }
   const reasoning = [
     { ok: lagOk, text: lagOk ? "Stabil recovery lag" : "Recovery lag förhöjd" },
-    { ok: !inp.tendernessTrendUp, text: !inp.tendernessTrendUp ? "Ingen tilltagande ömhet" : "Ömheten ökar" },
+    {
+      ok: !inp.abnormalResponse,
+      text: !inp.abnormalResponse
+        ? "Respons i nivå med belastningen"
+        : "Respons över förväntan efter senaste passet",
+    },
     { ok: loadOk, text: loadOk ? "Load inom målzon" : "Load-topp upptäckt" },
     {
       ok: consec >= 2,

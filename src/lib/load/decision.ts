@@ -118,16 +118,24 @@ function rawDecision(input: DecisionInput): DailyDecision {
     (input.fatigue != null && input.fatigue >= 8);
 
   // ---- RED gates ------------------------------------------------------------
+  // Weighting: recovery lag > readiness > tenderness. Tenderness alone forces
+  // red only at the hard safety floor (>=7); at 5–6 it needs a second signal.
+  const hardTender = tenderL != null && tenderL >= THRESHOLDS.tendernessHardRedMin;
+  const elevatedTender = tenderL != null && tenderL >= THRESHOLDS.tendernessRedMin && !hardTender;
+
   const redReasons: string[] = [];
-  if (tenderL != null && tenderL >= THRESHOLDS.tendernessRedMin)
-    redReasons.push(`tryckömhet ${tenderL}/10`);
+  if (hardTender)
+    redReasons.push(`tryckömhet ${tenderL}/10 (≥${THRESHOLDS.tendernessHardRedMin} är en hård säkerhetsgräns)`);
   if (safe === "no") redReasons.push("du markerade att det känns riskabelt att springa");
   if (!lastImpactResolved && lastImpactDate)
     redReasons.push("förra impact-passet har inte återhämtat sig än");
   if (trend === "worsening") redReasons.push("recovery-trenden förvärras");
+  // 5–6 tenderness reds only in combination with one of the signals above.
+  if (elevatedTender && redReasons.length > 0)
+    redReasons.push(`tryckömhet ${tenderL}/10 i kombination med ovanstående`);
 
   if (redReasons.length > 0) {
-    const canBike = tenderL == null || tenderL < THRESHOLDS.tendernessRedMin;
+    const canBike = !hardTender;
     return {
       light: "red",
       recommendation: canBike ? "bike_instead" : "rest",
@@ -139,6 +147,24 @@ function rawDecision(input: DecisionInput): DailyDecision {
         (canBike
           ? "Kör ingen impact. Cykel eller överkroppsstyrka går bra och belastar inte skenbenen."
           : "Vila benen helt idag. Ingen löpning, fotboll eller tung underkroppsstyrka."),
+    };
+  }
+
+  // ---- ELEVATED TENDERNESS (5–6), no other warning signal → YELLOW ----------
+  // Never a progression day. Prefer non-impact; impact capped at repeat/reduce.
+  if (elevatedTender) {
+    const repeatBudget =
+      bestGreen ?? tibialOf(FIRST_RUN_TEMPLATE.running_minutes, bodyKg, FIRST_RUN_TEMPLATE.surface);
+    return {
+      light: "yellow",
+      recommendation: "bike_instead",
+      tibialBudget: repeatBudget,
+      prescription:
+        "Helst cykel eller styrka idag. Kör du ändå impact: max upprepa förra tolererade passet — öka inte.",
+      coldStart,
+      rationale:
+        `Gult — tryckömhet ${tenderL}/10 är förhöjd, men recovery lag och din egen bedömning är stabila, så ömhet ensam ger inte rött. ` +
+        "Progression är låst idag: välj helst cykel/styrka, annars max samma dos som senast.",
     };
   }
 

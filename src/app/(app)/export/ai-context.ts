@@ -197,6 +197,36 @@ export async function buildAiContext(): Promise<string> {
     }
   }
 
+  // ---- Load Response Analysis -------------------------------------------------
+  md.push(`\n# Load Response Analysis`);
+  md.push(`_Symptoms normalised against exposure — compare impact sessions to previous impact sessions, never to rest weeks._`);
+  if (li.loadResponse.entries.length === 0) {
+    md.push("_No impact sessions yet._");
+  } else {
+    if (li.loadResponse.latest) {
+      const lr = li.loadResponse.latest;
+      md.push(
+        [
+          `Latest (${lr.type}):`,
+          `- Load: ${lr.loadDeltaPct != null ? `${lr.loadDeltaPct > 0 ? "+" : ""}${lr.loadDeltaPct}%` : "first of its type"}`,
+          `- Tenderness: ${lr.tendernessDelta != null ? `${lr.tendernessDelta > 0 ? "+" : ""}${lr.tendernessDelta}` : "n/a"}`,
+          `- Recovery lag: ${lr.lagDelta != null ? `${lr.lagDelta > 0 ? "+" : ""}${lr.lagDelta} days` : "n/a"}`,
+          `- Readiness: ${lr.readinessWord}`,
+          `- Interpretation: ${lr.interpretation}`,
+        ].join("\n"),
+      );
+    }
+    md.push(
+      li.loadResponse.entries
+        .slice(0, 8)
+        .map(
+          (e) =>
+            `- ${e.date} ${e.type}: ${e.tibial} AU${e.loadDeltaPct != null ? ` (${e.loadDeltaPct > 0 ? "+" : ""}${e.loadDeltaPct}%)` : ""}, peak ${e.peakTenderness ?? "?"}, lag ${e.lag ?? "?"} d → **${e.lri}**`,
+        )
+        .join("\n"),
+    );
+  }
+
   // ---- Recovery Trends ------------------------------------------------------
   md.push(`\n# Recovery Trends`);
   const allLags = li.recoveries.map((r) => r.daysUntilReady).filter((v): v is number => v != null);

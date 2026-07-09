@@ -25,27 +25,25 @@ export function buildDigest(args: {
   loadChangePct: number | null;
   runsThisWeek: number;
   baseline: number;
+  /** Latest load-response comparison — symptoms are judged against exposure, never in isolation. */
+  latestResponse: import("./response").LoadResponseAnalysis["latest"];
 }): string[] {
-  const { tenderness, recoveries, loadChangePct, runsThisWeek, baseline } = args;
+  const { tenderness, recoveries, loadChangePct, runsThisWeek, baseline, latestResponse } = args;
   const out: string[] = [];
 
-  const worse = tenderness
-    .map((d) => (d.left == null && d.right == null ? null : Math.max(d.left ?? 0, d.right ?? 0)))
-    .filter((v): v is number => v != null);
-
-  // Trend: last 5 vs previous 5.
-  if (worse.length >= 4) {
-    const last = worse.slice(-5);
-    const prev = worse.slice(-10, -5);
-    const avg = (a: number[]) => a.reduce((s, v) => s + v, 0) / a.length;
-    const lAvg = avg(last);
-    const pAvg = prev.length ? avg(prev) : lAvg;
-    const diff = lAvg - pAvg;
-    if (diff <= -0.5) out.push(`Tryckömheten trendar nedåt (förbättras) — snitt ${lAvg.toFixed(1)} senaste dagarna mot ${pAvg.toFixed(1)} innan.`);
-    else if (diff >= 0.5) out.push(`⚠️ Tryckömheten trendar uppåt — snitt ${lAvg.toFixed(1)} senaste dagarna mot ${pAvg.toFixed(1)} innan. Var försiktig.`);
-    else out.push(`Tryckömheten är stabil (snitt ${lAvg.toFixed(1)}/10 senaste dagarna).`);
-  } else if (worse.length > 0) {
-    out.push(`För lite data för en trend än — fortsätt logga morgon-check-ins.`);
+  // Symptom trend is ALWAYS exposure-normalised (Load Response), never a raw
+  // day-over-day comparison — rest weeks must not make a return to running
+  // look like "worsening".
+  if (latestResponse) {
+    const lr = latestResponse;
+    const loadStr = lr.loadDeltaPct != null ? `${lr.loadDeltaPct > 0 ? "+" : ""}${lr.loadDeltaPct}% load` : "första passet av sin typ";
+    const tenderStr = lr.tendernessDelta != null ? `ömhet ${lr.tendernessDelta > 0 ? "+" : ""}${lr.tendernessDelta}` : null;
+    const lagStr = lr.lagDelta != null ? `lag ${lr.lagDelta > 0 ? "+" : ""}${lr.lagDelta} d` : null;
+    const deltas = [loadStr, tenderStr, lagStr].filter(Boolean).join(", ");
+    const prefix = lr.lri === "slightly_elevated" || lr.lri === "concerning" ? "⚠️ " : "";
+    out.push(`${prefix}Load Response (${labelFor(lr.type).toLowerCase()}): ${deltas}. ${lr.interpretation}`);
+  } else if (recoveries.length === 0) {
+    out.push("Ingen impact loggad än — symptomrespons utvärderas mot ditt första löppass, inte mot vilodagar.");
   }
 
   // Asymmetry over recent non-null readings.
