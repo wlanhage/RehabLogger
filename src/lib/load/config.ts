@@ -72,6 +72,15 @@ export const THRESHOLDS = {
   tendernessRedMin: 5,
   /** Hard safety floor: tenderness at/above this is ALWAYS red, regardless of readiness. */
   tendernessHardRedMin: 7,
+  /**
+   * Recovery-response classification is LAG-PRIMARY (per the Load Response
+   * philosophy): a run that recovers fast is green even if the peak reached
+   * this level. A brief evening soreness of 3–4 that's gone by next morning
+   * is a normal, well-tolerated response — not a "yellow, on the edge" pass.
+   */
+  responseGreenPeakMax: 4,
+  /** A post-run peak this high contributes to a red response. */
+  responseRedPeakMin: 6,
   readinessLagGreenMax: 2, // days_until_ready ≤ 2 is good
   readinessLagRedMin: 4,
 } as const;

@@ -65,12 +65,20 @@ export function deriveRecovery(
   checkins: CheckinPoint[],
   fallbackBaseline = DEFAULT_BASELINE_TENDERNESS,
   windowDays = 6,
+  nextImpactISO: string | null = null,
 ): RecoveryResponse {
   const baseline = baselineBefore(checkins, session.date, fallbackBaseline);
 
+  // Cap the window at the next impact session: tenderness after the NEXT run
+  // must not be attributed to THIS one (exposure attribution).
+  const endOffset =
+    nextImpactISO != null
+      ? Math.min(windowDays, Math.max(0, offsetDays(nextImpactISO, session.date) - 1))
+      : windowDays;
+
   const after = checkins
     .map((c) => ({ ...c, k: offsetDays(c.date, session.date) }))
-    .filter((c) => c.k >= 0 && c.k <= windowDays)
+    .filter((c) => c.k >= 0 && c.k <= endOffset)
     .sort((a, b) => a.k - b.k);
 
   const tenderVals = after
@@ -92,17 +100,19 @@ export function deriveRecovery(
 
   const worsened = peak != null && peak > baseline + 1;
 
+  // Lag-primary classification: fast recovery = green even with a moderate
+  // (≤4) peak; red is driven by a long lag or a strong (≥6) peak.
   let status: RecoveryStatus;
   if (daysUntilReady == null) {
     status = "ongoing";
   } else if (
-    (peak ?? 0) <= THRESHOLDS.tendernessGreenMax &&
-    daysUntilReady <= THRESHOLDS.readinessLagGreenMax
+    daysUntilReady <= THRESHOLDS.readinessLagGreenMax &&
+    (peak ?? 0) <= THRESHOLDS.responseGreenPeakMax
   ) {
     status = "green";
   } else if (
-    (peak ?? 0) >= THRESHOLDS.tendernessRedMin ||
-    daysUntilReady >= THRESHOLDS.readinessLagRedMin
+    daysUntilReady >= THRESHOLDS.readinessLagRedMin ||
+    (peak ?? 0) >= THRESHOLDS.responseRedPeakMin
   ) {
     status = "red";
   } else {
@@ -128,8 +138,11 @@ export function deriveAllRecoveries(
   checkins: CheckinPoint[],
   fallbackBaseline = DEFAULT_BASELINE_TENDERNESS,
 ): RecoveryResponse[] {
-  return impactSessions
-    .map((s) => deriveRecovery(s, checkins, fallbackBaseline))
+  // Sort ascending so each session knows the date of the next impact session,
+  // which caps its recovery window (no cross-run contamination).
+  const asc = [...impactSessions].sort((a, b) => a.date.localeCompare(b.date));
+  return asc
+    .map((s, i) => deriveRecovery(s, checkins, fallbackBaseline, 6, asc[i + 1]?.date ?? null))
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
