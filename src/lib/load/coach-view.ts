@@ -3,7 +3,7 @@
 
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
 import { sv } from "date-fns/locale";
-import { FIRST_RUN_TEMPLATE } from "./config";
+import { FIRST_RUN_TEMPLATE, RECOVERED_REST_DAYS } from "./config";
 import { lagTrend, type RecoveryResponse } from "./recovery";
 import type { DailyDecision } from "./decision";
 
@@ -129,9 +129,18 @@ export function buildCoachView(inp: CoachInput): CoachView {
   // recovery is still in progress — not delayed — per the exposure-normalised rules.
   const hardTenderness = inp.todayTenderness != null && inp.todayTenderness >= 7;
   const elevatedTenderness = inp.todayTenderness != null && inp.todayTenderness >= 5 && !hardTenderness;
+  // Recovered by rest: a long calm gap + not elevated → ready, regardless of a
+  // stale unresolved/worsening signal from an old run.
+  const recoveredByRest =
+    hoursSinceImpact / 24 >= RECOVERED_REST_DAYS &&
+    (inp.todayTenderness == null || inp.todayTenderness < 5);
 
   let status: CoachStatus;
-  if ((last && (last.status === "red" || last.status === "ongoing")) || trend === "worsening" || hardTenderness) {
+  if (hardTenderness) {
+    status = "delayed";
+  } else if (recoveredByRest) {
+    status = "ready";
+  } else if ((last && (last.status === "red" || last.status === "ongoing")) || trend === "worsening") {
     status = "delayed";
   } else if (hoursSinceImpact < 48 || (last && last.status === "yellow") || elevatedTenderness) {
     status = "in_progress";
@@ -183,7 +192,9 @@ export function buildCoachView(inp: CoachInput): CoachView {
             : kind === "cycle"
               ? elevatedTenderness
                 ? "Ömheten är förhöjd idag (utan andra varningssignaler). Cykel eller styrka håller konditionen utan skenbensbelastning — kör du impact ändå: max samma dos som senast."
-                : "Du sprang nyligen och skenbenen återhämtar sig. Cykel behåller konditionen med minimal belastning på benhinnorna."
+                : hoursSinceImpact / 24 < 3
+                  ? "Du körde impact nyligen och skenbenen återhämtar sig. Cykel behåller konditionen med minimal belastning på benhinnorna."
+                  : "Impact behövs inte idag. Cykel behåller konditionen utan att belasta skenbenen."
               : kind === "strength"
                 ? "Impact är inte läge idag. Underkroppsstyrka bygger kapacitet utan repetitiv stöt mot skenbenen."
                 : "Ömheten är förhöjd. Vila benen idag så att nästa impact-pass landar bättre.";

@@ -1,6 +1,7 @@
 import {
   THRESHOLDS,
   MIN_HOURS_BETWEEN_IMPACT,
+  RECOVERED_REST_DAYS,
   GREEN_PROGRESSION,
   FIRST_RUN_TEMPLATE,
   TIBIAL_IMPACT,
@@ -108,9 +109,17 @@ function rawDecision(input: DecisionInput): DailyDecision {
   const hoursSinceImpact =
     lastImpactDate != null ? hoursSince(lastImpactDate, input.todayISO) : Infinity;
   const insideRecoveryWindow = hoursSinceImpact < MIN_HOURS_BETWEEN_IMPACT;
+  const daysSinceImpact = hoursSinceImpact / 24;
 
   const trend = lagTrend(recoveries);
   const bestGreen = bestTolerableTibial(recoveries);
+
+  // Recovered by current state: a long, calm gap since the last impact means
+  // stale "unresolved" / "worsening" signals no longer apply. This is the fix
+  // for "green + rested a week, but the engine still says recovery delayed".
+  const recoveredByRest =
+    daysSinceImpact >= RECOVERED_REST_DAYS &&
+    (tenderL == null || tenderL < THRESHOLDS.tendernessRedMin);
 
   // #4 — poor systemic recovery blocks progression (not a red gate on its own).
   const poorRecovery =
@@ -127,9 +136,11 @@ function rawDecision(input: DecisionInput): DailyDecision {
   if (hardTender)
     redReasons.push(`tryckömhet ${tenderL}/10 (≥${THRESHOLDS.tendernessHardRedMin} är en hård säkerhetsgräns)`);
   if (safe === "no") redReasons.push("du markerade att det känns riskabelt att springa");
-  if (!lastImpactResolved && lastImpactDate)
+  // Stale signals below only count if you haven't already rested off the last
+  // impact — an old, resolved-by-time run must not force red.
+  if (!lastImpactResolved && lastImpactDate && !recoveredByRest)
     redReasons.push("förra impact-passet har inte återhämtat sig än");
-  if (trend === "worsening") redReasons.push("recovery-trenden förvärras");
+  if (trend === "worsening" && !recoveredByRest) redReasons.push("recovery-trenden förvärras");
   // 5–6 tenderness reds only in combination with one of the signals above.
   if (elevatedTender && redReasons.length > 0)
     redReasons.push(`tryckömhet ${tenderL}/10 i kombination med ovanstående`);
@@ -261,6 +272,24 @@ function rawDecision(input: DecisionInput): DailyDecision {
       rationale:
         "Morgonen är grön och fönstret är klart, men förra passet låg på gränsen (gult). " +
         "Upprepa samma belastning och bekräfta att den blir grön innan du ökar.",
+    };
+  }
+
+  // Last run never cleanly resolved within its window (ongoing) but you've since
+  // rested and are green now → allow a run, but hold the dose (don't progress).
+  if (last && last.status === "ongoing") {
+    const holdLoad = bestGreenRun ?? tibialOf(FIRST_RUN_TEMPLATE.running_minutes, bodyKg, FIRST_RUN_TEMPLATE.surface);
+    return {
+      light: "green",
+      recommendation: "repeat_previous_run",
+      tibialBudget: holdLoad,
+      prescription: bestGreenRun
+        ? `Håll samma dos som ditt senaste tolererade pass (tibial budget ${holdLoad} AU) — öka inte.`
+        : FIRST_RUN_TEMPLATE.label,
+      coldStart: false,
+      rationale:
+        "Du är grön och utvilad, men förra löppasset tog lite längre att lugna ner sig. " +
+        "Kör gärna, men håll samma belastning som senast tills responsen är snabb och tydlig igen.",
     };
   }
 

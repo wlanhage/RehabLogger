@@ -54,6 +54,14 @@ export const DEFAULT_BASELINE_TENDERNESS = 0;
 /** Minimum hours between impact sessions the engine will ever allow. */
 export const MIN_HOURS_BETWEEN_IMPACT = 48;
 
+/**
+ * Rest days after which the body is considered recovered by current state:
+ * if it's been this long since the last impact AND today's tenderness isn't
+ * elevated, stale "unresolved recovery" / "worsening lag" signals no longer
+ * force red. Prevents an old run from blocking training after a long, calm gap.
+ */
+export const RECOVERED_REST_DAYS = 4;
+
 /** Progression ceiling when green: max fraction to add to tibial budget. */
 export const GREEN_PROGRESSION = 0.08; // +8%
 
